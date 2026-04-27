@@ -7,7 +7,6 @@ The core runtime uses Python 3.12 and NumPy only.
 ## Quick Start
 
 ```bash
-cd "/Users/avipatel/Documents/New project 3/high_fidelity_flight_vehicle_sim"
 python3 -m unittest discover -s tests
 python3 -m aerosim6dof validate --scenario examples/scenarios/nominal_ascent.json
 python3 -m aerosim6dof run --scenario examples/scenarios/nominal_ascent.json --out outputs/nominal_expanded
