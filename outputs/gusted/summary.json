@@ -1,0 +1,16 @@
+{
+  "scenario": "gusted_crossrange",
+  "samples": 667,
+  "final": {
+    "time_s": 19.98,
+    "x_m": -1743.875839247174,
+    "y_m": 15960.766621808967,
+    "altitude_m": 3750.091859724122,
+    "speed_mps": 2377.5046687030567,
+    "mass_kg": 16.521365328352772
+  },
+  "max_altitude_m": 3750.091859724122,
+  "max_speed_mps": 2377.5046687030567,
+  "max_load_factor_g": 35.87518286778249,
+  "max_qbar_pa": 150000.0
+}

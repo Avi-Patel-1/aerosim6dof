@@ -1,0 +1,30 @@
+{
+  "barometer_altitude_rmse_m": 2.408676190416048,
+  "barometer_valid_fraction": 1.0,
+  "gps_position_rmse_m": 59.58226756556551,
+  "gps_valid_fraction": 0.7803660565723793,
+  "gps_velocity_rmse_mps": 11.489002961987335,
+  "horizon_pitch_rmse_deg": 0.9093241666216656,
+  "horizon_roll_rmse_deg": 1.4225502937998937,
+  "horizon_valid_fraction": 0.7637271214642263,
+  "imu_accel_norm_mean_mps2": 24.811685008588118,
+  "imu_gyro_norm_mean_rps": 1.2172232975135537,
+  "magnetometer_heading_rmse_deg": 3.5088931712291727,
+  "magnetometer_valid_fraction": 1.0,
+  "optical_flow_valid_fraction": 0.0,
+  "pitot_airspeed_rmse_mps": 0.3834514713272644,
+  "pitot_valid_fraction": 1.0,
+  "radar_agl_rmse_m_flat_terrain": 1.783244294960993,
+  "radar_valid_fraction": 1.0,
+  "samples": 601,
+  "sensor_dropout_events": {
+    "baro_valid": 0,
+    "gps_valid": 2,
+    "horizon_valid": 6,
+    "imu_valid": 0,
+    "mag_valid": 0,
+    "optical_flow_valid": 0,
+    "pitot_valid": 0,
+    "radar_valid": 0
+  }
+}

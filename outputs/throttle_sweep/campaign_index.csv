@@ -1,0 +1,3 @@
+sweep_index,scenario,label,duration_s,final_altitude_m,final_speed_mps,max_qbar_pa,max_load_factor_g,event_count,run_dir,param_guidance.throttle
+0,nominal_ascent_sweep_000,guidance.throttle=0.82,18.0,333.2572698599491,197.3620034947686,39414.330545465025,2.224586513134214,2,outputs/throttle_sweep/nominal_ascent_sweep_000,0.82
+1,nominal_ascent_sweep_001,guidance.throttle=0.86,18.0,375.77513012546524,202.82496505083748,41844.2257905442,2.295343084805138,2,outputs/throttle_sweep/nominal_ascent_sweep_001,0.86

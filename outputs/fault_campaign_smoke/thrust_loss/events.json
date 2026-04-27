@@ -1,0 +1,12 @@
+[
+  {
+    "description": "Propulsion thrust reached zero.",
+    "time_s": 6.51,
+    "type": "burnout"
+  },
+  {
+    "description": "Maximum altitude was 223.73 m.",
+    "time_s": 18.0,
+    "type": "max_altitude"
+  }
+]

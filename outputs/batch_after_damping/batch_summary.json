@@ -1,0 +1,285 @@
+{
+  "count": 14,
+  "runs": [
+    {
+      "duration_s": 14.0,
+      "event_count": 6,
+      "final": {
+        "altitude_m": 502.1755703634682,
+        "mass_kg": 15.14339920252825,
+        "speed_mps": 187.09155206075042,
+        "time_s": 14.0,
+        "x_m": 1766.2486892341537,
+        "y_m": 598.7779813189252
+      },
+      "max_altitude_m": 1223.7674704866856,
+      "max_load_factor_g": 6.030073528315555,
+      "max_qbar_pa": 24300.896621591863,
+      "max_speed_mps": 205.94622139612508,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/actuator_saturation",
+      "samples": 561,
+      "scenario": "actuator_saturation"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 3,
+      "final": {
+        "altitude_m": 278.9089072007509,
+        "mass_kg": 16.686984660036146,
+        "speed_mps": 126.85208303278893,
+        "time_s": 18.0,
+        "x_m": 2689.477031223718,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 310.95283820941904,
+      "max_load_factor_g": 2.3424795655490342,
+      "max_qbar_pa": 22338.21407902835,
+      "max_speed_mps": 192.83728485804494,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/engine_thrust_loss",
+      "samples": 601,
+      "scenario": "engine_thrust_loss"
+    },
+    {
+      "duration_s": 35.0,
+      "event_count": 3,
+      "final": {
+        "altitude_m": 317.733897186656,
+        "mass_kg": 10.983293343345142,
+        "speed_mps": 23.675530118236697,
+        "time_s": 35.0,
+        "x_m": 229.99564513084601,
+        "y_m": 238.0709513750678
+      },
+      "max_altitude_m": 1200.0,
+      "max_load_factor_g": 3.090384079731858,
+      "max_qbar_pa": 1261.0944322985495,
+      "max_speed_mps": 48.104053883222775,
+      "min_target_distance_m": 1052.3996472943625,
+      "run_dir": "outputs/batch_after_damping/glide_return",
+      "samples": 876,
+      "scenario": "glide_return"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 6,
+      "final": {
+        "altitude_m": 436.3475426338188,
+        "mass_kg": 15.334841207376199,
+        "speed_mps": 77.50552887060738,
+        "time_s": 18.0,
+        "x_m": 970.0208821880378,
+        "y_m": -1171.713709192073
+      },
+      "max_altitude_m": 985.4084758461279,
+      "max_load_factor_g": 4.014243255737885,
+      "max_qbar_pa": 13710.177144342393,
+      "max_speed_mps": 152.05294144314655,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/gps_dropout_navigation",
+      "samples": 601,
+      "scenario": "gps_dropout_navigation"
+    },
+    {
+      "duration_s": 19.98,
+      "event_count": 6,
+      "final": {
+        "altitude_m": 278.3123862322895,
+        "mass_kg": 16.3348412073762,
+        "speed_mps": 76.75039498220197,
+        "time_s": 19.98,
+        "x_m": 1894.3670748866957,
+        "y_m": 354.12902270104456
+      },
+      "max_altitude_m": 1058.1637004215152,
+      "max_load_factor_g": 4.655623358616305,
+      "max_qbar_pa": 17494.391002131404,
+      "max_speed_mps": 176.50606851858484,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/gusted_crossrange",
+      "samples": 667,
+      "scenario": "gusted_crossrange"
+    },
+    {
+      "duration_s": 24.0,
+      "event_count": 5,
+      "final": {
+        "altitude_m": 14731.265904870173,
+        "mass_kg": 16.10756741764618,
+        "speed_mps": 371.7262611530861,
+        "time_s": 24.0,
+        "x_m": 9193.422908593622,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 14731.265904870173,
+      "max_load_factor_g": 12.010332095879575,
+      "max_qbar_pa": 26755.963156987113,
+      "max_speed_mps": 510.16869466434616,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/high_altitude_low_density",
+      "samples": 601,
+      "scenario": "high_altitude_low_density"
+    },
+    {
+      "duration_s": 12.0,
+      "event_count": 1,
+      "final": {
+        "altitude_m": 1295.8891881290251,
+        "mass_kg": 15.88265696183068,
+        "speed_mps": 201.57984452335813,
+        "time_s": 12.0,
+        "x_m": 1674.1701390577593,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 1295.8891881290251,
+      "max_load_factor_g": 2.104344531944416,
+      "max_qbar_pa": 21936.366932247907,
+      "max_speed_mps": 201.57984452335813,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/high_aoa_stall",
+      "samples": 481,
+      "scenario": "high_aoa_stall"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 6,
+      "final": {
+        "altitude_m": 158.13076452102507,
+        "mass_kg": 15.303113126511603,
+        "speed_mps": 77.51447940097864,
+        "time_s": 18.0,
+        "x_m": 1067.4582304353128,
+        "y_m": -1115.0595684025027
+      },
+      "max_altitude_m": 762.2637181443309,
+      "max_load_factor_g": 4.309564186919413,
+      "max_qbar_pa": 15663.668738748695,
+      "max_speed_mps": 160.68803878483897,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/imu_bias_navigation",
+      "samples": 601,
+      "scenario": "imu_bias_navigation"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 2,
+      "final": {
+        "altitude_m": 379.7412333511338,
+        "mass_kg": 15.271385045647058,
+        "speed_mps": 201.38018586107725,
+        "time_s": 18.0,
+        "x_m": 3586.801139818193,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 379.7412333511338,
+      "max_load_factor_g": 2.4204804114064187,
+      "max_qbar_pa": 41665.284741628646,
+      "max_speed_mps": 264.1925181752283,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/nominal_ascent",
+      "samples": 601,
+      "scenario": "nominal_ascent"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 5,
+      "final": {
+        "altitude_m": 439.7857124998916,
+        "mass_kg": 15.334841207376199,
+        "speed_mps": 75.91216289308899,
+        "time_s": 18.0,
+        "x_m": 982.3585997438253,
+        "y_m": -845.7425207727958
+      },
+      "max_altitude_m": 1096.484565386191,
+      "max_load_factor_g": 3.455547140497557,
+      "max_qbar_pa": 11825.533142830647,
+      "max_speed_mps": 140.3178194136261,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/sensor_noise_autopilot",
+      "samples": 601,
+      "scenario": "sensor_noise_autopilot"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 5,
+      "final": {
+        "altitude_m": 1534.2070351749464,
+        "mass_kg": 15.271385045647058,
+        "speed_mps": 104.31979676936288,
+        "time_s": 18.0,
+        "x_m": 2049.9402870322087,
+        "y_m": 16.388761463511457
+      },
+      "max_altitude_m": 1534.2070351749464,
+      "max_load_factor_g": 4.139867517904577,
+      "max_qbar_pa": 24415.973258267968,
+      "max_speed_mps": 202.84952940761065,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/stuck_elevator_failure",
+      "samples": 601,
+      "scenario": "stuck_elevator_failure"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 6,
+      "final": {
+        "altitude_m": 671.9913746981296,
+        "mass_kg": 15.207928883917914,
+        "speed_mps": 75.6369807101128,
+        "time_s": 18.0,
+        "x_m": 1029.232562961278,
+        "y_m": -1264.4155611767492
+      },
+      "max_altitude_m": 1175.5817818495016,
+      "max_load_factor_g": 3.6470395781302356,
+      "max_qbar_pa": 12739.484074667487,
+      "max_speed_mps": 147.39742194631629,
+      "min_target_distance_m": 1568.881840991329,
+      "run_dir": "outputs/batch_after_damping/target_intercept",
+      "samples": 601,
+      "scenario": "target_intercept"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 6,
+      "final": {
+        "altitude_m": 1114.9791528817505,
+        "mass_kg": 15.303113126511603,
+        "speed_mps": 78.79281680289796,
+        "time_s": 18.0,
+        "x_m": 2050.6166889399788,
+        "y_m": 851.764822024055
+      },
+      "max_altitude_m": 1214.4497227349989,
+      "max_load_factor_g": 5.2486964572384,
+      "max_qbar_pa": 21820.16710977382,
+      "max_speed_mps": 198.9143056240663,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/batch_after_damping/thrust_misalignment",
+      "samples": 601,
+      "scenario": "thrust_misalignment"
+    },
+    {
+      "duration_s": 21.84,
+      "event_count": 4,
+      "final": {
+        "altitude_m": -0.6777420229542752,
+        "mass_kg": 10.955799922928778,
+        "speed_mps": 25.057040865973086,
+        "time_s": 21.84,
+        "x_m": 59.12306422034213,
+        "y_m": -6.138001719782337
+      },
+      "max_altitude_m": 450.0,
+      "max_load_factor_g": 3.2538486210480317,
+      "max_qbar_pa": 1364.0759657290885,
+      "max_speed_mps": 44.547611215536605,
+      "min_target_distance_m": 992.7734321105628,
+      "run_dir": "outputs/batch_after_damping/waypoint_navigation",
+      "samples": 547,
+      "scenario": "waypoint_navigation"
+    }
+  ]
+}

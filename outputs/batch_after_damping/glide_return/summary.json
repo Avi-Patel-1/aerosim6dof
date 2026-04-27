@@ -1,0 +1,19 @@
+{
+  "duration_s": 35.0,
+  "event_count": 3,
+  "final": {
+    "altitude_m": 317.733897186656,
+    "mass_kg": 10.983293343345142,
+    "speed_mps": 23.675530118236697,
+    "time_s": 35.0,
+    "x_m": 229.99564513084601,
+    "y_m": 238.0709513750678
+  },
+  "max_altitude_m": 1200.0,
+  "max_load_factor_g": 3.090384079731858,
+  "max_qbar_pa": 1261.0944322985495,
+  "max_speed_mps": 48.104053883222775,
+  "min_target_distance_m": 1052.3996472943625,
+  "samples": 876,
+  "scenario": "glide_return"
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "description": "Maximum altitude was 450.00 m.",
+    "time_s": 0.0,
+    "type": "max_altitude"
+  },
+  {
+    "description": "aileron reached its command or rate limit.",
+    "time_s": 0.04,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "rudder reached its command or rate limit.",
+    "time_s": 0.08,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "Vehicle intersected the terrain model.",
+    "time_s": 21.84,
+    "type": "ground_impact"
+  }
+]

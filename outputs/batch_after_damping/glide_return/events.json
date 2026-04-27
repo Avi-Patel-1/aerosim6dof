@@ -1,0 +1,17 @@
+[
+  {
+    "description": "Maximum altitude was 1200.00 m.",
+    "time_s": 0.0,
+    "type": "max_altitude"
+  },
+  {
+    "description": "aileron reached its command or rate limit.",
+    "time_s": 0.08,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "rudder reached its command or rate limit.",
+    "time_s": 0.76,
+    "type": "actuator_saturation"
+  }
+]

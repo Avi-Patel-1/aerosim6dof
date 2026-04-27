@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 3,
+  "final": {
+    "altitude_m": 196.19621302874026,
+    "mass_kg": 15.303113126511603,
+    "speed_mps": 81.88629248521926,
+    "time_s": 18.0,
+    "x_m": 1352.8922489462366,
+    "y_m": 89.07968706579246
+  },
+  "max_altitude_m": 1020.1593701919136,
+  "max_load_factor_g": 3.4453012200585196,
+  "max_qbar_pa": 7313.307439766792,
+  "max_speed_mps": 114.81726488047694,
+  "min_target_distance_m": null,
+  "samples": 601,
+  "scenario": "thrust_misalignment"
+}

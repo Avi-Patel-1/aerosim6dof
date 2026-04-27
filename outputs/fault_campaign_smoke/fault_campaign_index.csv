@@ -1,0 +1,4 @@
+fault_name,scenario,duration_s,final_altitude_m,final_speed_mps,max_qbar_pa,max_load_factor_g,event_count,run_dir
+gps_dropout,nominal_ascent_gps_dropout,18.0,375.77513012546524,202.82496505083748,41844.2257905442,2.295343084805138,2,outputs/fault_campaign_smoke/gps_dropout
+thrust_loss,nominal_ascent_thrust_loss,18.0,223.7326210574358,162.59550642691468,24338.699973264887,2.2841515652461957,2,outputs/fault_campaign_smoke/thrust_loss
+stuck_elevator,nominal_ascent_stuck_elevator,18.0,1451.0276369589653,121.05875359221348,27216.35217752038,3.815535876015095,2,outputs/fault_campaign_smoke/stuck_elevator

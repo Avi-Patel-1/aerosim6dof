@@ -1,0 +1,90 @@
+{
+  "dispersions": {
+    "mass_sigma_kg": 0.15
+  },
+  "final_altitude_mean_m": 347.48510465862955,
+  "final_altitude_std_m": 0.3764542260984091,
+  "max_load_factor_mean_g": 2.3109215056717662,
+  "max_load_factor_std_g": 0.02311730431260564,
+  "max_qbar_mean_pa": 42264.4015820913,
+  "max_qbar_std_pa": 404.0091075458099,
+  "runs": [
+    {
+      "dispersions": {
+        "mass_sigma_kg": 0.15
+      },
+      "duration_s": 18.0,
+      "event_count": 2,
+      "final": {
+        "altitude_m": 346.9946352791087,
+        "mass_kg": 15.28979117544807,
+        "speed_mps": 201.21858419331656,
+        "time_s": 18.0,
+        "x_m": 3599.412758128069,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 346.9946352791087,
+      "max_load_factor_g": 2.303771101245731,
+      "max_qbar_pa": 41983.41516283876,
+      "max_speed_mps": 264.82406921491435,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/monte_carlo_mass_only_check/nominal_ascent_mc_000",
+      "sample_index": 0,
+      "samples": 601,
+      "scenario": "nominal_ascent_mc_000",
+      "seed": 91
+    },
+    {
+      "dispersions": {
+        "mass_sigma_kg": 0.15
+      },
+      "duration_s": 18.0,
+      "event_count": 2,
+      "final": {
+        "altitude_m": 347.55101696457996,
+        "mass_kg": 14.904904172251694,
+        "speed_mps": 202.9794639513818,
+        "time_s": 18.0,
+        "x_m": 3637.440497721801,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 347.55101696457996,
+      "max_load_factor_g": 2.3421240209179133,
+      "max_qbar_pa": 42835.731202222385,
+      "max_speed_mps": 267.6524757095789,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/monte_carlo_mass_only_check/nominal_ascent_mc_001",
+      "sample_index": 1,
+      "samples": 601,
+      "scenario": "nominal_ascent_mc_001",
+      "seed": 92
+    },
+    {
+      "dispersions": {
+        "mass_sigma_kg": 0.15
+      },
+      "duration_s": 18.0,
+      "event_count": 2,
+      "final": {
+        "altitude_m": 347.9096617322001,
+        "mass_kg": 15.437473324877459,
+        "speed_mps": 201.07864876372022,
+        "time_s": 18.0,
+        "x_m": 3588.841574686573,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 347.9096617322001,
+      "max_load_factor_g": 2.2868693948516543,
+      "max_qbar_pa": 41974.058381212766,
+      "max_speed_mps": 264.74737532434483,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/monte_carlo_mass_only_check/nominal_ascent_mc_002",
+      "sample_index": 2,
+      "samples": 601,
+      "scenario": "nominal_ascent_mc_002",
+      "seed": 93
+    }
+  ],
+  "samples": 3,
+  "scenario": "nominal_ascent"
+}

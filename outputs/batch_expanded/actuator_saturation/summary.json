@@ -1,0 +1,19 @@
+{
+  "duration_s": 14.0,
+  "event_count": 6,
+  "final": {
+    "altitude_m": 546.4234036429698,
+    "mass_kg": 15.14339920252825,
+    "speed_mps": 100.72680685353981,
+    "time_s": 14.0,
+    "x_m": 1477.4277773799492,
+    "y_m": -130.030196520784
+  },
+  "max_altitude_m": 1023.1731371629267,
+  "max_load_factor_g": 4.104624534372397,
+  "max_qbar_pa": 11876.859202505426,
+  "max_speed_mps": 146.27412700857482,
+  "min_target_distance_m": null,
+  "samples": 561,
+  "scenario": "actuator_saturation"
+}

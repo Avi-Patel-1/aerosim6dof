@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Batch Flight Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2933; background: #f7f8fa; }
+    main { max-width: 1180px; margin: 0 auto; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 18px 0; }
+    .card { background: white; border: 1px solid #d9dee7; padding: 14px; }
+    .metric { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; background: white; margin-top: 18px; }
+    th, td { border: 1px solid #d9dee7; padding: 8px 10px; text-align: left; }
+    th { background: #eef2f7; }
+    a { color: #0f62fe; text-decoration: none; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Batch Flight Report</h1>
+  <p>Aggregate summary across scenario runs.</p>
+  <section class="cards">
+    <div class="card"><div>Runs</div><div class="metric">3</div></div>
+    <div class="card"><div>Highest altitude</div><div class="metric">1469.31 m</div></div>
+    <div class="card"><div>Highest speed</div><div class="metric">264.193 m/s</div></div>
+    <div class="card"><div>Highest load</div><div class="metric">3.69736 g</div></div>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Scenario</th><th>Duration (s)</th><th>Final altitude (m)</th><th>Max altitude (m)</th>
+        <th>Max speed (m/s)</th><th>Max load (g)</th><th>Events</th><th>Report</th>
+      </tr>
+    </thead>
+    <tbody><tr><td>nominal_ascent_gps_dropout</td><td>18</td><td>379.741</td><td>379.741</td><td>264.193</td><td>2.42048</td><td>2</td><td><a href="gps_dropout/report.html">open</a></td></tr>
+<tr><td>nominal_ascent_thrust_loss</td><td>18</td><td>265.482</td><td>265.482</td><td>199.16</td><td>2.42048</td><td>2</td><td><a href="thrust_loss/report.html">open</a></td></tr>
+<tr><td>nominal_ascent_stuck_elevator</td><td>18</td><td>1469.31</td><td>1469.31</td><td>214.321</td><td>3.69736</td><td>2</td><td><a href="stuck_elevator/report.html">open</a></td></tr></tbody>
+  </table>
+</main>
+</body>
+</html>

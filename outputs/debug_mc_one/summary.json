@@ -1,0 +1,19 @@
+{
+  "duration_s": 4.68,
+  "event_count": 3,
+  "final": {
+    "altitude_m": -0.14198194076710025,
+    "mass_kg": 17.017633117118812,
+    "speed_mps": 116.89374635210292,
+    "time_s": 4.68,
+    "x_m": 539.8496547033034,
+    "y_m": -15.190921365027547
+  },
+  "max_altitude_m": 29.382203452612664,
+  "max_load_factor_g": 3.8159138207403442,
+  "max_qbar_pa": 10783.79149606425,
+  "max_speed_mps": 132.9535819501328,
+  "min_target_distance_m": null,
+  "samples": 157,
+  "scenario": "nominal_ascent"
+}

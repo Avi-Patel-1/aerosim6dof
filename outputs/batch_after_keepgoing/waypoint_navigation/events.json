@@ -1,0 +1,12 @@
+[
+  {
+    "description": "Maximum altitude was 450.00 m.",
+    "time_s": 0.0,
+    "type": "max_altitude"
+  },
+  {
+    "description": "Vehicle intersected the terrain model.",
+    "time_s": 21.96,
+    "type": "ground_impact"
+  }
+]

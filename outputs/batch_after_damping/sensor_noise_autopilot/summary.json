@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 5,
+  "final": {
+    "altitude_m": 439.7857124998916,
+    "mass_kg": 15.334841207376199,
+    "speed_mps": 75.91216289308899,
+    "time_s": 18.0,
+    "x_m": 982.3585997438253,
+    "y_m": -845.7425207727958
+  },
+  "max_altitude_m": 1096.484565386191,
+  "max_load_factor_g": 3.455547140497557,
+  "max_qbar_pa": 11825.533142830647,
+  "max_speed_mps": 140.3178194136261,
+  "min_target_distance_m": null,
+  "samples": 601,
+  "scenario": "sensor_noise_autopilot"
+}

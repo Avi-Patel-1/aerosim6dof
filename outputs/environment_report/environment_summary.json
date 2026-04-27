@@ -1,0 +1,7 @@
+{
+  "environment": "gusted_range",
+  "max_wind_mps": 33.043789835598574,
+  "samples": 101,
+  "surface_density_kgpm3": 1.225000018124288,
+  "top_density_kgpm3": 0.040016355610732766
+}

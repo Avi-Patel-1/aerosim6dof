@@ -1,0 +1,27 @@
+{
+  "name": "thrust_misalignment",
+  "dt": 0.03,
+  "duration": 18.0,
+  "vehicle_config": "../vehicles/baseline.json",
+  "environment_config": "../environments/calm.json",
+  "initial": {
+    "position_m": [0.0, 0.0, 1000.0],
+    "velocity_mps": [84.0, 0.0, 15.0],
+    "euler_deg": [0.0, 9.0, 0.0]
+  },
+  "vehicle": {
+    "propulsion": {
+      "misalignment_deg": [1.2, -0.8, 0.0],
+      "nozzle_cant_moment_nm": [0.0, 2.0, -1.5]
+    }
+  },
+  "guidance": {
+    "mode": "fixed_pitch",
+    "pitch_command_deg": 18.0,
+    "heading_command_deg": 0.0,
+    "throttle": 0.85
+  },
+  "sensors": {
+    "seed": 132
+  }
+}

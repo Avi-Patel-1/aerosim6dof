@@ -1,0 +1,17 @@
+[
+  {
+    "description": "Maximum altitude was 29.85 m.",
+    "time_s": 2.61,
+    "type": "max_altitude"
+  },
+  {
+    "description": "Vertical velocity crossed through zero.",
+    "time_s": 2.6399999999999997,
+    "type": "apogee"
+  },
+  {
+    "description": "Vehicle intersected the terrain model.",
+    "time_s": 4.71,
+    "type": "ground_impact"
+  }
+]

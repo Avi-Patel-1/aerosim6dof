@@ -1,0 +1,16 @@
+{
+  "scenario": "nominal_ascent",
+  "samples": 601,
+  "final": {
+    "time_s": 18.0,
+    "x_m": 4552.219145091304,
+    "y_m": 0.0,
+    "altitude_m": 24454.5146586221,
+    "speed_mps": 4098.627017048675,
+    "mass_kg": 15.235650244852373
+  },
+  "max_altitude_m": 24454.5146586221,
+  "max_speed_mps": 4098.627017048675,
+  "max_load_factor_g": 35.99989517253923,
+  "max_qbar_pa": 150000.0
+}

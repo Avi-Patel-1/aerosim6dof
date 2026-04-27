@@ -1,0 +1,46 @@
+{
+  "name": "imu_bias_navigation",
+  "dt": 0.03,
+  "duration": 18.0,
+  "vehicle_config": "../vehicles/baseline.json",
+  "environment_config": "../environments/gusted_range.json",
+  "initial": {
+    "position_m": [0.0, 0.0, 750.0],
+    "velocity_mps": [86.0, -1.0, 9.0],
+    "euler_deg": [0.0, 7.0, 0.0]
+  },
+  "guidance": {
+    "mode": "heading_hold",
+    "heading_command_deg": -2.0,
+    "pitch_command_deg": 7.5,
+    "throttle": 0.85
+  },
+  "sensors": {
+    "seed": 319,
+    "imu": {
+      "rate_hz": 100.0,
+      "accel_noise_std_mps2": 0.06,
+      "gyro_noise_std_rps": 0.004,
+      "accel_scale_factor": [1.002, 0.998, 1.001],
+      "gyro_misalignment_deg": [0.1, -0.08, 0.05]
+    },
+    "horizon": {
+      "rate_hz": 20.0,
+      "noise_std_deg": 0.4
+    },
+    "optical_flow": {
+      "rate_hz": 25.0,
+      "max_agl_m": 1200.0
+    },
+    "faults": [
+      {
+        "sensor": "imu",
+        "type": "bias_jump",
+        "start_s": 6.0,
+        "end_s": 99.0,
+        "accel_bias_mps2": [0.45, 0.0, -0.2],
+        "gyro_bias_rps": [0.0, 0.015, -0.006]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "max_cd": 0.5926243163327015,
+  "max_cl": 0.9136,
+  "max_cm": 0.28,
+  "min_cl": -0.8499999999999999,
+  "min_cm": -0.25999999999999995,
+  "samples": 85,
+  "vehicle": "baseline_research_vehicle"
+}

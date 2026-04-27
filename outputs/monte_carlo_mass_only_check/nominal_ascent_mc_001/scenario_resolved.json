@@ -1,0 +1,316 @@
+{
+  "dt": 0.03,
+  "duration": 18.0,
+  "environment": {
+    "name": "calm_range",
+    "terrain": {
+      "base_altitude_m": 0.0,
+      "slope_x": 0.0,
+      "slope_y": 0.0
+    },
+    "wind": {
+      "steady_mps": [
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "environment_config": "../environments/calm.json",
+  "events": {
+    "load_limit_g": 15.0,
+    "qbar_limit_pa": 90000.0
+  },
+  "guidance": {
+    "heading_command_deg": 0.0,
+    "mode": "pitch_program",
+    "pitch_program": [
+      [
+        0.0,
+        13.0
+      ],
+      [
+        6.0,
+        10.0
+      ],
+      [
+        14.0,
+        7.0
+      ]
+    ],
+    "throttle": 0.86
+  },
+  "initial": {
+    "body_rates_dps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "euler_deg": [
+      0.0,
+      6.0,
+      0.0
+    ],
+    "position_m": [
+      0.0,
+      0.0,
+      20.0
+    ],
+    "velocity_mps": [
+      85.0,
+      0.0,
+      8.0
+    ]
+  },
+  "integrator": "semi_implicit_euler",
+  "name": "nominal_ascent_mc_001",
+  "sensors": {
+    "baro_noise_std_m": 0.6,
+    "gps_noise_std_m": 1.2,
+    "imu_noise_std": 0.04,
+    "seed": 92
+  },
+  "vehicle": {
+    "actuators": {
+      "deadband_rad": 0.001,
+      "surface_limit_deg": 22.0,
+      "surface_rate_dps": 150.0,
+      "time_constant_s": 0.05
+    },
+    "aero": {
+      "cd0": 0.075,
+      "cd_alpha": 0.58,
+      "cd_beta": 0.22,
+      "cl_alpha": 3.1,
+      "cl_da": 0.09,
+      "cl_elevator": 0.48,
+      "cl_p": -0.45,
+      "cm_alpha": 0.78,
+      "cm_de": 1.05,
+      "cm_q": -9.5,
+      "cn_beta": 0.25,
+      "cn_dr": -0.18,
+      "cn_r": -0.35,
+      "compressibility": "prandtl_glauert",
+      "compressibility_cap": 1.55,
+      "cy_beta": -0.82,
+      "cy_rudder": 0.35,
+      "database": {
+        "axes": {
+          "alpha_deg": [
+            -15.0,
+            -5.0,
+            0.0,
+            10.0,
+            20.0
+          ],
+          "mach": [
+            0.25,
+            0.6,
+            0.9
+          ]
+        },
+        "coefficients": {
+          "cd": [
+            [
+              0.24,
+              0.26,
+              0.31
+            ],
+            [
+              0.105,
+              0.115,
+              0.14
+            ],
+            [
+              0.075,
+              0.085,
+              0.11
+            ],
+            [
+              0.16,
+              0.18,
+              0.24
+            ],
+            [
+              0.38,
+              0.44,
+              0.58
+            ]
+          ],
+          "cl": [
+            [
+              -0.72,
+              -0.78,
+              -0.85
+            ],
+            [
+              -0.26,
+              -0.29,
+              -0.32
+            ],
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.58,
+              0.64,
+              0.7
+            ],
+            [
+              0.86,
+              0.92,
+              0.96
+            ]
+          ],
+          "cm": [
+            [
+              -0.2,
+              -0.23,
+              -0.26
+            ],
+            [
+              -0.06,
+              -0.07,
+              -0.08
+            ],
+            [
+              0.0,
+              0.0,
+              0.0
+            ],
+            [
+              0.14,
+              0.16,
+              0.18
+            ],
+            [
+              0.22,
+              0.25,
+              0.28
+            ]
+          ]
+        }
+      },
+      "drag_rise_cd": 0.08,
+      "drag_rise_mach": 0.82,
+      "stall": {
+        "alpha_stall_deg": 18.0,
+        "drag_rise": 0.85,
+        "full_stall_width_deg": 24.0,
+        "post_stall_lift_factor": 0.42
+      },
+      "tables": {
+        "cl_alpha_by_mach": [
+          [
+            0.2,
+            3.0
+          ],
+          [
+            0.6,
+            3.25
+          ],
+          [
+            0.9,
+            3.55
+          ]
+        ],
+        "cm_q_by_mach": [
+          [
+            0.2,
+            -8.5
+          ],
+          [
+            0.6,
+            -9.5
+          ],
+          [
+            0.9,
+            -11.0
+          ]
+        ]
+      }
+    },
+    "dry_inertia_kgm2": [
+      [
+        0.28,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.72,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.68
+      ]
+    ],
+    "dry_mass_kg": 13.6,
+    "inertia_kgm2": [
+      [
+        0.34,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.88,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.82
+      ]
+    ],
+    "mass_kg": 17.633519126604632,
+    "name": "baseline_research_vehicle",
+    "propulsion": {
+      "burn_time_s": 13.0,
+      "isp_s": 190.0,
+      "max_thrust_n": 460.0,
+      "position_body_m": [
+        -0.35,
+        0.0,
+        0.0
+      ],
+      "throttleable": true,
+      "thrust_curve": [
+        [
+          0.0,
+          380.0
+        ],
+        [
+          0.4,
+          470.0
+        ],
+        [
+          8.0,
+          460.0
+        ],
+        [
+          13.0,
+          420.0
+        ]
+      ]
+    },
+    "reference": {
+      "area_m2": 0.052,
+      "chord_m": 0.48,
+      "span_m": 0.32
+    }
+  },
+  "vehicle_config": "../vehicles/baseline.json",
+  "wind": {
+    "steady_mps": [
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

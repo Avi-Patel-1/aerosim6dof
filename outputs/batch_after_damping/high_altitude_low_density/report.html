@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>high_altitude_low_density report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2933; background: #f7f8fa; }
+    main { max-width: 1120px; margin: 0 auto; }
+    h1, h2 { margin-bottom: 0.35rem; }
+    table { border-collapse: collapse; background: white; margin: 18px 0; min-width: 420px; }
+    th, td { border: 1px solid #d9dee7; padding: 8px 10px; text-align: left; }
+    th { background: #eef2f7; }
+    figure { background: white; border: 1px solid #d9dee7; margin: 18px 0; padding: 12px; }
+    img { width: 100%; height: auto; display: block; }
+    figcaption { font-size: 12px; color: #52616f; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>high_altitude_low_density Flight Report</h1>
+  <p>Generated from simulator truth, control, sensor, and event logs.</p>
+  <h2>Summary</h2>
+  <table><tr><th>scenario</th><td>high_altitude_low_density</td></tr>
+<tr><th>samples</th><td>601</td></tr>
+<tr><th>duration_s</th><td>24</td></tr>
+<tr><th>max_altitude_m</th><td>14731.3</td></tr>
+<tr><th>max_speed_mps</th><td>510.169</td></tr>
+<tr><th>max_load_factor_g</th><td>12.0103</td></tr>
+<tr><th>max_qbar_pa</th><td>26756</td></tr>
+<tr><th>min_target_distance_m</th><td>-</td></tr>
+<tr><th>event_count</th><td>5</td></tr></table>
+  <h2>Events</h2>
+  <ul><li><strong>apogee</strong> at 1.520 s - Vertical velocity crossed through zero.</li>
+<li><strong>actuator_saturation</strong> at 12.080 s - elevator reached its command or rate limit.</li>
+<li><strong>load_factor_exceedance</strong> at 16.520 s - Load factor exceeded 8.0 g.</li>
+<li><strong>burnout</strong> at 18.040 s - Propulsion thrust reached zero.</li>
+<li><strong>max_altitude</strong> at 24.000 s - Maximum altitude was 14731.27 m.</li></ul>
+  <h2>Plots</h2>
+  <figure><img src="plots/01_altitude_m.svg" alt="01_altitude_m"><figcaption>01 altitude m</figcaption></figure>
+<figure><img src="plots/02_downrange_crossrange.svg" alt="02_downrange_crossrange"><figcaption>02 downrange crossrange</figcaption></figure>
+<figure><img src="plots/03_position_x.svg" alt="03_position_x"><figcaption>03 position x</figcaption></figure>
+<figure><img src="plots/04_position_y.svg" alt="04_position_y"><figcaption>04 position y</figcaption></figure>
+<figure><img src="plots/05_position_z.svg" alt="05_position_z"><figcaption>05 position z</figcaption></figure>
+<figure><img src="plots/06_velocity_x.svg" alt="06_velocity_x"><figcaption>06 velocity x</figcaption></figure>
+<figure><img src="plots/07_velocity_y.svg" alt="07_velocity_y"><figcaption>07 velocity y</figcaption></figure>
+<figure><img src="plots/08_velocity_z.svg" alt="08_velocity_z"><figcaption>08 velocity z</figcaption></figure>
+<figure><img src="plots/09_speed_mps.svg" alt="09_speed_mps"><figcaption>09 speed mps</figcaption></figure>
+<figure><img src="plots/10_euler_deg.svg" alt="10_euler_deg"><figcaption>10 euler deg</figcaption></figure>
+<figure><img src="plots/11_body_rates_dps.svg" alt="11_body_rates_dps"><figcaption>11 body rates dps</figcaption></figure>
+<figure><img src="plots/12_alpha_beta_deg.svg" alt="12_alpha_beta_deg"><figcaption>12 alpha beta deg</figcaption></figure>
+<figure><img src="plots/13_mach.svg" alt="13_mach"><figcaption>13 mach</figcaption></figure>
+<figure><img src="plots/14_qbar_pa.svg" alt="14_qbar_pa"><figcaption>14 qbar pa</figcaption></figure>
+<figure><img src="plots/15_load_factor_g.svg" alt="15_load_factor_g"><figcaption>15 load factor g</figcaption></figure>
+<figure><img src="plots/16_mass_kg.svg" alt="16_mass_kg"><figcaption>16 mass kg</figcaption></figure>
+<figure><img src="plots/17_thrust_n.svg" alt="17_thrust_n"><figcaption>17 thrust n</figcaption></figure>
+<figure><img src="plots/18_surfaces_deg.svg" alt="18_surfaces_deg"><figcaption>18 surfaces deg</figcaption></figure>
+<figure><img src="plots/19_actuator_saturation.svg" alt="19_actuator_saturation"><figcaption>19 actuator saturation</figcaption></figure>
+<figure><img src="plots/20_wind_components.svg" alt="20_wind_components"><figcaption>20 wind components</figcaption></figure>
+<figure><img src="plots/21_gps_altitude_truth.svg" alt="21_gps_altitude_truth"><figcaption>21 gps altitude truth</figcaption></figure>
+<figure><img src="plots/22_barometer_truth.svg" alt="22_barometer_truth"><figcaption>22 barometer truth</figcaption></figure>
+<figure><img src="plots/23_pitch_command_tracking.svg" alt="23_pitch_command_tracking"><figcaption>23 pitch command tracking</figcaption></figure>
+<figure><img src="plots/24_heading_command_tracking.svg" alt="24_heading_command_tracking"><figcaption>24 heading command tracking</figcaption></figure>
+<figure><img src="plots/25_energy_proxy.svg" alt="25_energy_proxy"><figcaption>25 energy proxy</figcaption></figure>
+<figure><img src="plots/26_qbar_load_envelope.svg" alt="26_qbar_load_envelope"><figcaption>26 qbar load envelope</figcaption></figure>
+<figure><img src="plots/27_target_distance.svg" alt="27_target_distance"><figcaption>27 target distance</figcaption></figure>
+</main>
+</body>
+</html>

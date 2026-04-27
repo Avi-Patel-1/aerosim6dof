@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 6,
+  "final": {
+    "altitude_m": 158.13076452102507,
+    "mass_kg": 15.303113126511603,
+    "speed_mps": 77.51447940097864,
+    "time_s": 18.0,
+    "x_m": 1067.4582304353128,
+    "y_m": -1115.0595684025027
+  },
+  "max_altitude_m": 762.2637181443309,
+  "max_load_factor_g": 4.309564186919413,
+  "max_qbar_pa": 15663.668738748695,
+  "max_speed_mps": 160.68803878483897,
+  "min_target_distance_m": null,
+  "samples": 601,
+  "scenario": "imu_bias_navigation"
+}

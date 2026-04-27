@@ -1,0 +1,22 @@
+[
+  {
+    "description": "Maximum altitude was 756.90 m.",
+    "time_s": 1.47,
+    "type": "max_altitude"
+  },
+  {
+    "description": "Vertical velocity crossed through zero.",
+    "time_s": 1.5,
+    "type": "apogee"
+  },
+  {
+    "description": "Propulsion thrust reached zero.",
+    "time_s": 13.02,
+    "type": "burnout"
+  },
+  {
+    "description": "Vehicle intersected the terrain model.",
+    "time_s": 17.79,
+    "type": "ground_impact"
+  }
+]

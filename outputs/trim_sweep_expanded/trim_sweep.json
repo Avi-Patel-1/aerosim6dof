@@ -1,0 +1,51 @@
+{
+  "altitude_range_m": [
+    0.0,
+    1000.0
+  ],
+  "count": 4,
+  "feasible_count": 4,
+  "rows": [
+    {
+      "alpha_deg": -5.0,
+      "altitude_m": 0.0,
+      "elevator_deg": -4.0,
+      "feasible": true,
+      "pitch_deg": -5.0,
+      "residual_score": 110.2363585121811,
+      "speed_mps": 90.0
+    },
+    {
+      "alpha_deg": -5.0,
+      "altitude_m": 0.0,
+      "elevator_deg": -4.0,
+      "feasible": true,
+      "pitch_deg": -5.0,
+      "residual_score": 50.62980317540497,
+      "speed_mps": 120.0
+    },
+    {
+      "alpha_deg": -5.0,
+      "altitude_m": 1000.0,
+      "elevator_deg": -4.0,
+      "feasible": true,
+      "pitch_deg": -5.0,
+      "residual_score": 116.2285180102932,
+      "speed_mps": 90.0
+    },
+    {
+      "alpha_deg": -5.0,
+      "altitude_m": 1000.0,
+      "elevator_deg": -4.0,
+      "feasible": true,
+      "pitch_deg": -5.0,
+      "residual_score": 61.94387210937685,
+      "speed_mps": 120.0
+    }
+  ],
+  "speed_range_mps": [
+    90.0,
+    120.0
+  ],
+  "vehicle": "examples/vehicles/baseline.json"
+}

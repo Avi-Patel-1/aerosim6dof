@@ -1,0 +1,35 @@
+{
+  "extends": "baseline.json",
+  "name": "electric_uav_demonstrator",
+  "mass_kg": 11.0,
+  "dry_mass_kg": 9.0,
+  "reference": {
+    "area_m2": 0.42,
+    "span_m": 2.1,
+    "chord_m": 0.22
+  },
+  "propulsion": {
+    "model": "electric",
+    "electric_static_thrust_n": 95.0,
+    "electric_speed_loss_per_mps": 0.006,
+    "battery_capacity_j": 1200000.0,
+    "electrical_efficiency": 0.76,
+    "burn_time_s": 900.0,
+    "throttleable": true,
+    "engine_lag_s": 0.18,
+    "position_body_m": [-0.55, 0.0, 0.0]
+  },
+  "aero": {
+    "cd0": 0.045,
+    "cd_alpha": 0.42,
+    "cl_alpha": 5.1,
+    "cl_elevator": 0.62,
+    "cm_alpha": 0.55,
+    "cm_de": 0.82,
+    "stall": {
+      "alpha_stall_deg": 14.5,
+      "post_stall_lift_factor": 0.35,
+      "drag_rise": 1.1
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "speed_mps": 120.0,
+  "altitude_m": 1000.0,
+  "alpha_deg": -5.0,
+  "pitch_deg": -5.0,
+  "elevator_deg": -3.5,
+  "quaternion": [
+    0.9990482215818578,
+    0.0,
+    0.043619387365336,
+    0.0
+  ],
+  "residual_score": 79.52599033256892
+}

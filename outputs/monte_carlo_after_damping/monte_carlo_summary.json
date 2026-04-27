@@ -1,0 +1,94 @@
+{
+  "dispersions": {
+    "mass_sigma_kg": 0.15,
+    "wind_sigma_mps": 0.1
+  },
+  "final_altitude_mean_m": 46.34999816808758,
+  "final_altitude_std_m": 9.008833023250945,
+  "max_load_factor_mean_g": 5.835929997486425,
+  "max_load_factor_std_g": 0.1501184392328544,
+  "max_qbar_mean_pa": 23154.250059019487,
+  "max_qbar_std_pa": 287.161969443328,
+  "runs": [
+    {
+      "dispersions": {
+        "mass_sigma_kg": 0.15,
+        "wind_sigma_mps": 0.1
+      },
+      "duration_s": 18.0,
+      "event_count": 5,
+      "final": {
+        "altitude_m": 43.146876907632546,
+        "mass_kg": 15.28979117544807,
+        "speed_mps": 71.30227825829199,
+        "time_s": 18.0,
+        "x_m": 1626.5808821612682,
+        "y_m": 1145.1063105276637
+      },
+      "max_altitude_m": 217.6307232327971,
+      "max_load_factor_g": 5.736717241047558,
+      "max_qbar_pa": 23027.875998327032,
+      "max_speed_mps": 195.06752299717036,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/monte_carlo_after_damping/nominal_ascent_mc_000",
+      "sample_index": 0,
+      "samples": 601,
+      "scenario": "nominal_ascent_mc_000",
+      "seed": 91
+    },
+    {
+      "dispersions": {
+        "mass_sigma_kg": 0.15,
+        "wind_sigma_mps": 0.1
+      },
+      "duration_s": 18.0,
+      "event_count": 5,
+      "final": {
+        "altitude_m": 58.63067951606807,
+        "mass_kg": 14.904904172251694,
+        "speed_mps": 71.07882927681158,
+        "time_s": 18.0,
+        "x_m": 1612.029697125363,
+        "y_m": 1160.2661478866619
+      },
+      "max_altitude_m": 232.03217552281347,
+      "max_load_factor_g": 6.048081570702247,
+      "max_qbar_pa": 23551.675316727476,
+      "max_speed_mps": 197.26767253346705,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/monte_carlo_after_damping/nominal_ascent_mc_001",
+      "sample_index": 1,
+      "samples": 601,
+      "scenario": "nominal_ascent_mc_001",
+      "seed": 92
+    },
+    {
+      "dispersions": {
+        "mass_sigma_kg": 0.15,
+        "wind_sigma_mps": 0.1
+      },
+      "duration_s": 18.0,
+      "event_count": 5,
+      "final": {
+        "altitude_m": 37.27243808056212,
+        "mass_kg": 15.437473324877459,
+        "speed_mps": 71.41977452365036,
+        "time_s": 18.0,
+        "x_m": 1633.7088134618155,
+        "y_m": -1135.9625114379878
+      },
+      "max_altitude_m": 213.78577367194447,
+      "max_load_factor_g": 5.722991180709471,
+      "max_qbar_pa": 22883.19886200396,
+      "max_speed_mps": 194.32630806198895,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/monte_carlo_after_damping/nominal_ascent_mc_002",
+      "sample_index": 2,
+      "samples": 601,
+      "scenario": "nominal_ascent_mc_002",
+      "seed": 93
+    }
+  ],
+  "samples": 3,
+  "scenario": "nominal_ascent"
+}

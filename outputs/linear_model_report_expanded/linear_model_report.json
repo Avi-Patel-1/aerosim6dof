@@ -1,0 +1,13 @@
+{
+  "a_frobenius_norm": 274.3061540889342,
+  "a_rank": 12,
+  "b_frobenius_norm": 168.3441823138427,
+  "b_rank": 4,
+  "control_count": 4,
+  "stability": {
+    "max_real_part": 0.22495360095068165,
+    "stable": false,
+    "unstable_count": 4
+  },
+  "state_count": 14
+}

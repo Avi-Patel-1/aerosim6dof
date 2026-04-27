@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Aerodynamic Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; background: #f7f8fa; color: #1f2933; }
+    main { max-width: 1080px; margin: 0 auto; }
+    pre, figure { background: white; border: 1px solid #d9dee7; padding: 12px; }
+    img { width: 100%; height: auto; display: block; }
+  </style>
+</head>
+<body><main>
+<h1>Aerodynamic Report</h1>
+<h2>Summary</h2><pre>{
+  "vehicle": "baseline_research_vehicle",
+  "samples": 85,
+  "max_cl": 0.9136,
+  "min_cl": -0.8499999999999999,
+  "max_cd": 0.5926243163327015,
+  "min_cm": -0.25999999999999995,
+  "max_cm": 0.28
+}</pre>
+<h2>Inspection</h2><pre>{
+  "vehicle": "baseline_research_vehicle",
+  "reference": {
+    "area_m2": 0.052,
+    "span_m": 0.32,
+    "chord_m": 0.48
+  },
+  "has_database": true,
+  "database_errors": [],
+  "tables": [
+    "cl_alpha_by_mach",
+    "cm_q_by_mach"
+  ],
+  "compressibility": "prandtl_glauert",
+  "stall_enabled": true,
+  "derivatives": {
+    "cd0": 0.075,
+    "cd_alpha": 0.58,
+    "cd_beta": 0.22,
+    "cl_alpha": 3.1,
+    "cl_da": 0.09,
+    "cl_elevator": 0.48,
+    "cl_p": -0.45,
+    "cm_alpha": 0.78,
+    "cm_de": 1.05,
+    "cm_q": -9.5,
+    "cn_beta": 0.25,
+    "cn_dr": -0.18,
+    "cn_r": -0.35,
+    "compressibility": "prandtl_glauert",
+    "compressibility_cap": 1.55,
+    "cy_beta": -0.82,
+    "cy_rudder": 0.35,
+    "drag_rise_cd": 0.08,
+    "drag_rise_mach": 0.82
+  }
+}</pre>
+<h2>Coefficient Sweeps</h2><figure><img src="cl_cd_mach_0.20.svg" alt="cl_cd_mach_0.20"><figcaption>cl_cd_mach_0.20</figcaption></figure>
+<figure><img src="cl_cd_mach_0.40.svg" alt="cl_cd_mach_0.40"><figcaption>cl_cd_mach_0.40</figcaption></figure>
+<figure><img src="cl_cd_mach_0.60.svg" alt="cl_cd_mach_0.60"><figcaption>cl_cd_mach_0.60</figcaption></figure>
+<figure><img src="cl_cd_mach_0.80.svg" alt="cl_cd_mach_0.80"><figcaption>cl_cd_mach_0.80</figcaption></figure>
+<figure><img src="cl_cd_mach_0.95.svg" alt="cl_cd_mach_0.95"><figcaption>cl_cd_mach_0.95</figcaption></figure>
+</main></body></html>

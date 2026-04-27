@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sensor Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2933; background: #f7f8fa; }
+    main { max-width: 1120px; margin: 0 auto; }
+    table { border-collapse: collapse; background: white; margin: 18px 0; min-width: 460px; }
+    th, td { border: 1px solid #d9dee7; padding: 8px 10px; text-align: left; }
+    th { background: #eef2f7; }
+    figure { background: white; border: 1px solid #d9dee7; margin: 18px 0; padding: 12px; }
+    img { width: 100%; height: auto; display: block; }
+    figcaption { font-size: 12px; color: #52616f; margin-top: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Sensor Report</h1>
+  <p>Sensor measurements compared against simulator truth channels.</p>
+  <h2>Error Metrics</h2>
+  <table><tr><th>samples</th><td>601</td></tr>
+<tr><th>gps_valid_fraction</th><td>0.780366</td></tr>
+<tr><th>barometer_valid_fraction</th><td>1</td></tr>
+<tr><th>pitot_valid_fraction</th><td>1</td></tr>
+<tr><th>magnetometer_valid_fraction</th><td>1</td></tr>
+<tr><th>radar_valid_fraction</th><td>1</td></tr>
+<tr><th>optical_flow_valid_fraction</th><td>0</td></tr>
+<tr><th>horizon_valid_fraction</th><td>0.763727</td></tr>
+<tr><th>imu_accel_norm_mean_mps2</th><td>24.8117</td></tr>
+<tr><th>imu_gyro_norm_mean_rps</th><td>1.21722</td></tr>
+<tr><th>gps_position_rmse_m</th><td>59.5823</td></tr>
+<tr><th>gps_velocity_rmse_mps</th><td>11.489</td></tr>
+<tr><th>barometer_altitude_rmse_m</th><td>2.40868</td></tr>
+<tr><th>pitot_airspeed_rmse_mps</th><td>0.383451</td></tr>
+<tr><th>radar_agl_rmse_m_flat_terrain</th><td>1.78324</td></tr>
+<tr><th>magnetometer_heading_rmse_deg</th><td>3.50889</td></tr>
+<tr><th>horizon_roll_rmse_deg</th><td>1.42255</td></tr>
+<tr><th>horizon_pitch_rmse_deg</th><td>0.909324</td></tr></table>
+  <h2>Valid-Flag Transitions</h2>
+  <table><tr><th>Sensor</th><th>Transitions</th></tr><tr><td>baro_valid</td><td>0</td></tr>
+<tr><td>gps_valid</td><td>2</td></tr>
+<tr><td>horizon_valid</td><td>6</td></tr>
+<tr><td>imu_valid</td><td>0</td></tr>
+<tr><td>mag_valid</td><td>0</td></tr>
+<tr><td>optical_flow_valid</td><td>0</td></tr>
+<tr><td>pitot_valid</td><td>0</td></tr>
+<tr><td>radar_valid</td><td>0</td></tr></table>
+  <h2>Plots</h2>
+  <figure><img src="plots/gps_altitude_error.svg" alt="gps_altitude_error"><figcaption>gps altitude error</figcaption></figure>
+<figure><img src="plots/barometer_altitude_error.svg" alt="barometer_altitude_error"><figcaption>barometer altitude error</figcaption></figure>
+<figure><img src="plots/pitot_airspeed_error.svg" alt="pitot_airspeed_error"><figcaption>pitot airspeed error</figcaption></figure>
+<figure><img src="plots/magnetometer_heading_error.svg" alt="magnetometer_heading_error"><figcaption>magnetometer heading error</figcaption></figure>
+<figure><img src="plots/radar_altimeter.svg" alt="radar_altimeter"><figcaption>radar altimeter</figcaption></figure>
+<figure><img src="plots/horizon_pitch.svg" alt="horizon_pitch"><figcaption>horizon pitch</figcaption></figure>
+<figure><img src="plots/imu_norms.svg" alt="imu_norms"><figcaption>imu norms</figcaption></figure>
+</main>
+</body>
+</html>

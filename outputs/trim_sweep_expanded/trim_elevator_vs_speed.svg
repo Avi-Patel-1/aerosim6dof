@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="54" y="28" font-family="Arial" font-size="18" font-weight="700">Trim Elevator</text>
+<line x1="54" y1="266" x2="766" y2="266" stroke="#1f2933"/>
+<line x1="54" y1="54" x2="54" y2="266" stroke="#1f2933"/>
+<text x="54" y="306" font-family="Arial" font-size="12">speed (m/s)</text>
+<text x="596" y="306" font-family="Arial" font-size="12">elevator (deg)</text>
+<text x="58" y="68" font-family="Arial" font-size="11">-3</text>
+<text x="58" y="260" font-family="Arial" font-size="11">-5</text>
+<polyline fill="none" stroke="#0f62fe" stroke-width="2.2" points="54.0,160.0 766.0,160.0 54.0,160.0 766.0,160.0"/>
+<line x1="606" y1="42" x2="628" y2="42" stroke="#0f62fe" stroke-width="2.2"/>
+<text x="634" y="46" font-family="Arial" font-size="12">elevator_deg</text>
+</svg>

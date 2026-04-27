@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Batch Flight Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2933; background: #f7f8fa; }
+    main { max-width: 1180px; margin: 0 auto; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 18px 0; }
+    .card { background: white; border: 1px solid #d9dee7; padding: 14px; }
+    .metric { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; background: white; margin-top: 18px; }
+    th, td { border: 1px solid #d9dee7; padding: 8px 10px; text-align: left; }
+    th { background: #eef2f7; }
+    a { color: #0f62fe; text-decoration: none; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Batch Flight Report</h1>
+  <p>Aggregate summary across scenario runs.</p>
+  <section class="cards">
+    <div class="card"><div>Runs</div><div class="metric">12</div></div>
+    <div class="card"><div>Highest altitude</div><div class="metric">14787.7 m</div></div>
+    <div class="card"><div>Highest speed</div><div class="metric">537.668 m/s</div></div>
+    <div class="card"><div>Highest load</div><div class="metric">6.07079 g</div></div>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Scenario</th><th>Duration (s)</th><th>Final altitude (m)</th><th>Max altitude (m)</th>
+        <th>Max speed (m/s)</th><th>Max load (g)</th><th>Events</th><th>Report</th>
+      </tr>
+    </thead>
+    <tbody><tr><td>actuator_saturation</td><td>14</td><td>546.423</td><td>1023.17</td><td>146.274</td><td>4.10462</td><td>6</td><td><a href="actuator_saturation/report.html">open</a></td></tr>
+<tr><td>engine_thrust_loss</td><td>18</td><td>253.937</td><td>286.276</td><td>193.628</td><td>2.24644</td><td>3</td><td><a href="engine_thrust_loss/report.html">open</a></td></tr>
+<tr><td>glide_return</td><td>35</td><td>394.791</td><td>1200</td><td>48.1041</td><td>3.07902</td><td>1</td><td><a href="glide_return/report.html">open</a></td></tr>
+<tr><td>gusted_crossrange</td><td>19.98</td><td>233.623</td><td>1020.75</td><td>111.545</td><td>3.14772</td><td>3</td><td><a href="gusted_crossrange/report.html">open</a></td></tr>
+<tr><td>high_altitude_low_density</td><td>24</td><td>14787.7</td><td>14787.7</td><td>537.668</td><td>6.07079</td><td>3</td><td><a href="high_altitude_low_density/report.html">open</a></td></tr>
+<tr><td>high_aoa_stall</td><td>12</td><td>1298.3</td><td>1298.3</td><td>201.536</td><td>2.10845</td><td>1</td><td><a href="high_aoa_stall/report.html">open</a></td></tr>
+<tr><td>nominal_ascent</td><td>18</td><td>375.775</td><td>375.775</td><td>264.613</td><td>2.29534</td><td>2</td><td><a href="nominal_ascent/report.html">open</a></td></tr>
+<tr><td>sensor_noise_autopilot</td><td>18</td><td>126.819</td><td>1020.7</td><td>110.557</td><td>3.1487</td><td>3</td><td><a href="sensor_noise_autopilot/report.html">open</a></td></tr>
+<tr><td>stuck_elevator_failure</td><td>18</td><td>1525.76</td><td>1525.76</td><td>203.223</td><td>4.19627</td><td>3</td><td><a href="stuck_elevator_failure/report.html">open</a></td></tr>
+<tr><td>target_intercept</td><td>18</td><td>175.891</td><td>1023.07</td><td>118.599</td><td>3.57279</td><td>3</td><td><a href="target_intercept/report.html">open</a></td></tr>
+<tr><td>thrust_misalignment</td><td>18</td><td>196.196</td><td>1020.16</td><td>114.817</td><td>3.4453</td><td>3</td><td><a href="thrust_misalignment/report.html">open</a></td></tr>
+<tr><td>waypoint_navigation</td><td>21.96</td><td>-0.410144</td><td>450</td><td>42.0476</td><td>2.9635</td><td>2</td><td><a href="waypoint_navigation/report.html">open</a></td></tr></tbody>
+  </table>
+</main>
+</body>
+</html>

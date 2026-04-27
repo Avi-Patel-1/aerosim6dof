@@ -1,0 +1,31 @@
+{
+  "name": "sensor_noise_autopilot",
+  "dt": 0.03,
+  "duration": 18.0,
+  "vehicle_config": "../vehicles/baseline.json",
+  "environment_config": "../environments/turbulent_range.json",
+  "initial": {
+    "position_m": [0.0, 0.0, 1000.0],
+    "velocity_mps": [83.0, 1.5, 14.0],
+    "euler_deg": [1.0, 8.0, 1.0]
+  },
+  "guidance": {
+    "mode": "altitude_hold",
+    "target_altitude_m": 1800.0,
+    "trim_pitch_deg": 8.0,
+    "heading_command_deg": 2.0,
+    "throttle": 0.84,
+    "navigation": "noisy_sensors"
+  },
+  "sensors": {
+    "seed": 155,
+    "navigation": "noisy_sensors",
+    "imu_noise_std": 0.12,
+    "gps_noise_std_m": 8.0,
+    "baro_noise_std_m": 5.0,
+    "gps": {
+      "rate_hz": 2.0,
+      "dropout_probability": 0.08
+    }
+  }
+}

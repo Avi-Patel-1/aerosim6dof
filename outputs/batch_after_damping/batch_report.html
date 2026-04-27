@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Batch Flight Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2933; background: #f7f8fa; }
+    main { max-width: 1180px; margin: 0 auto; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 18px 0; }
+    .card { background: white; border: 1px solid #d9dee7; padding: 14px; }
+    .metric { font-size: 24px; font-weight: 700; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; background: white; margin-top: 18px; }
+    th, td { border: 1px solid #d9dee7; padding: 8px 10px; text-align: left; }
+    th { background: #eef2f7; }
+    a { color: #0f62fe; text-decoration: none; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Batch Flight Report</h1>
+  <p>Aggregate summary across scenario runs.</p>
+  <section class="cards">
+    <div class="card"><div>Runs</div><div class="metric">14</div></div>
+    <div class="card"><div>Highest altitude</div><div class="metric">14731.3 m</div></div>
+    <div class="card"><div>Highest speed</div><div class="metric">510.169 m/s</div></div>
+    <div class="card"><div>Highest load</div><div class="metric">12.0103 g</div></div>
+  </section>
+  <table>
+    <thead>
+      <tr>
+        <th>Scenario</th><th>Duration (s)</th><th>Final altitude (m)</th><th>Max altitude (m)</th>
+        <th>Max speed (m/s)</th><th>Max load (g)</th><th>Events</th><th>Report</th>
+      </tr>
+    </thead>
+    <tbody><tr><td>actuator_saturation</td><td>14</td><td>502.176</td><td>1223.77</td><td>205.946</td><td>6.03007</td><td>6</td><td><a href="actuator_saturation/report.html">open</a></td></tr>
+<tr><td>engine_thrust_loss</td><td>18</td><td>278.909</td><td>310.953</td><td>192.837</td><td>2.34248</td><td>3</td><td><a href="engine_thrust_loss/report.html">open</a></td></tr>
+<tr><td>glide_return</td><td>35</td><td>317.734</td><td>1200</td><td>48.1041</td><td>3.09038</td><td>3</td><td><a href="glide_return/report.html">open</a></td></tr>
+<tr><td>gps_dropout_navigation</td><td>18</td><td>436.348</td><td>985.408</td><td>152.053</td><td>4.01424</td><td>6</td><td><a href="gps_dropout_navigation/report.html">open</a></td></tr>
+<tr><td>gusted_crossrange</td><td>19.98</td><td>278.312</td><td>1058.16</td><td>176.506</td><td>4.65562</td><td>6</td><td><a href="gusted_crossrange/report.html">open</a></td></tr>
+<tr><td>high_altitude_low_density</td><td>24</td><td>14731.3</td><td>14731.3</td><td>510.169</td><td>12.0103</td><td>5</td><td><a href="high_altitude_low_density/report.html">open</a></td></tr>
+<tr><td>high_aoa_stall</td><td>12</td><td>1295.89</td><td>1295.89</td><td>201.58</td><td>2.10434</td><td>1</td><td><a href="high_aoa_stall/report.html">open</a></td></tr>
+<tr><td>imu_bias_navigation</td><td>18</td><td>158.131</td><td>762.264</td><td>160.688</td><td>4.30956</td><td>6</td><td><a href="imu_bias_navigation/report.html">open</a></td></tr>
+<tr><td>nominal_ascent</td><td>18</td><td>379.741</td><td>379.741</td><td>264.193</td><td>2.42048</td><td>2</td><td><a href="nominal_ascent/report.html">open</a></td></tr>
+<tr><td>sensor_noise_autopilot</td><td>18</td><td>439.786</td><td>1096.48</td><td>140.318</td><td>3.45555</td><td>5</td><td><a href="sensor_noise_autopilot/report.html">open</a></td></tr>
+<tr><td>stuck_elevator_failure</td><td>18</td><td>1534.21</td><td>1534.21</td><td>202.85</td><td>4.13987</td><td>5</td><td><a href="stuck_elevator_failure/report.html">open</a></td></tr>
+<tr><td>target_intercept</td><td>18</td><td>671.991</td><td>1175.58</td><td>147.397</td><td>3.64704</td><td>6</td><td><a href="target_intercept/report.html">open</a></td></tr>
+<tr><td>thrust_misalignment</td><td>18</td><td>1114.98</td><td>1214.45</td><td>198.914</td><td>5.2487</td><td>6</td><td><a href="thrust_misalignment/report.html">open</a></td></tr>
+<tr><td>waypoint_navigation</td><td>21.84</td><td>-0.677742</td><td>450</td><td>44.5476</td><td>3.25385</td><td>4</td><td><a href="waypoint_navigation/report.html">open</a></td></tr></tbody>
+  </table>
+</main>
+</body>
+</html>

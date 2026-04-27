@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 3,
+  "final": {
+    "altitude_m": 175.89086210687466,
+    "mass_kg": 15.207928883917914,
+    "speed_mps": 79.99890086256075,
+    "time_s": 18.0,
+    "x_m": 1187.1672717289475,
+    "y_m": -39.418941977882405
+  },
+  "max_altitude_m": 1023.0662537523607,
+  "max_load_factor_g": 3.5727938564692705,
+  "max_qbar_pa": 8291.032257332632,
+  "max_speed_mps": 118.59869435490069,
+  "min_target_distance_m": 1350.518383839752,
+  "samples": 601,
+  "scenario": "target_intercept"
+}

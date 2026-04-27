@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 3,
+  "final": {
+    "altitude_m": 278.9089072007509,
+    "mass_kg": 16.686984660036146,
+    "speed_mps": 126.85208303278893,
+    "time_s": 18.0,
+    "x_m": 2689.477031223718,
+    "y_m": 0.0
+  },
+  "max_altitude_m": 310.95283820941904,
+  "max_load_factor_g": 2.3424795655490342,
+  "max_qbar_pa": 22338.21407902835,
+  "max_speed_mps": 192.83728485804494,
+  "min_target_distance_m": null,
+  "samples": 601,
+  "scenario": "engine_thrust_loss"
+}

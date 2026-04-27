@@ -1,0 +1,19 @@
+{
+  "duration_s": 21.96,
+  "event_count": 2,
+  "final": {
+    "altitude_m": -0.4101439507079325,
+    "mass_kg": 10.961480638133951,
+    "speed_mps": 29.32594159297661,
+    "time_s": 21.96,
+    "x_m": 121.27501533245025,
+    "y_m": 5.091941921128039
+  },
+  "max_altitude_m": 450.0,
+  "max_load_factor_g": 2.963504373132651,
+  "max_qbar_pa": 1203.383344165056,
+  "max_speed_mps": 42.04759208325728,
+  "min_target_distance_m": 939.6012648125904,
+  "samples": 550,
+  "scenario": "waypoint_navigation"
+}

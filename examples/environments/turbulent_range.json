@@ -1,0 +1,12 @@
+{
+  "extends": "gusted_range.json",
+  "name": "turbulent_range",
+  "wind": {
+    "turbulence": {
+      "enabled": true,
+      "intensity_mps": [1.2, 1.2, 0.6],
+      "length_scale_m": 90.0
+    }
+  }
+}
+

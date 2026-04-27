@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aerosim6dof"
+version = "0.2.0"
+description = "Modular 6-DOF flight vehicle simulation with guidance, controls, sensors, and report outputs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Avi Patel" }]
+dependencies = ["numpy>=1.24"]
+
+[project.scripts]
+aerosim6dof = "aerosim6dof.cli:main"

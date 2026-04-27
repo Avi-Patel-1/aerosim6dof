@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 3,
+  "final": {
+    "altitude_m": 154.26346200150942,
+    "mass_kg": 15.334841207376199,
+    "speed_mps": 73.05436654233053,
+    "time_s": 18.0,
+    "x_m": 1132.3625709384962,
+    "y_m": 30.505716641046888
+  },
+  "max_altitude_m": 912.7108362257128,
+  "max_load_factor_g": 3.377313162571136,
+  "max_qbar_pa": 8148.969998923635,
+  "max_speed_mps": 114.55556947994042,
+  "min_target_distance_m": null,
+  "samples": 601,
+  "scenario": "gps_dropout_navigation"
+}

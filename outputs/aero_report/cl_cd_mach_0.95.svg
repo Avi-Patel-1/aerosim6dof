@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="820" height="320" viewBox="0 0 820 320">
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="54" y="28" font-family="Arial" font-size="18" font-weight="700">Aero Coefficients Mach 0.95</text>
+<line x1="54" y1="266" x2="766" y2="266" stroke="#1f2933"/>
+<line x1="54" y1="54" x2="54" y2="266" stroke="#1f2933"/>
+<text x="54" y="306" font-family="Arial" font-size="12">alpha (deg)</text>
+<text x="596" y="306" font-family="Arial" font-size="12">coefficient</text>
+<text x="58" y="68" font-family="Arial" font-size="11">0.914</text>
+<text x="58" y="260" font-family="Arial" font-size="11">-0.85</text>
+<polyline fill="none" stroke="#0f62fe" stroke-width="2.2" points="54.0,266.0 98.5,250.1 143.0,234.1 187.5,218.2 232.0,202.3 276.5,183.1 321.0,163.8 365.5,142.8 410.0,121.7 454.5,100.7 499.0,79.7 543.5,71.9 588.0,64.0 632.5,56.2 677.0,54.0 721.5,61.0 766.0,67.9"/>
+<line x1="606" y1="42" x2="628" y2="42" stroke="#0f62fe" stroke-width="2.2"/>
+<text x="634" y="46" font-family="Arial" font-size="12">cl</text>
+<polyline fill="none" stroke="#24a148" stroke-width="2.2" points="54.0,126.6 98.5,131.7 143.0,136.8 187.5,141.9 232.0,147.0 276.5,148.8 321.0,150.6 365.5,146.7 410.0,142.8 454.5,138.9 499.0,135.0 543.5,124.8 588.0,114.5 632.5,104.3 677.0,94.0 721.5,93.5 766.0,92.6"/>
+<line x1="606" y1="60" x2="628" y2="60" stroke="#24a148" stroke-width="2.2"/>
+<text x="634" y="64" font-family="Arial" font-size="12">cd</text>
+<polyline fill="none" stroke="#da1e28" stroke-width="2.2" points="54.0,195.1 98.5,189.7 143.0,184.3 187.5,178.8 232.0,173.4 276.5,168.6 321.0,163.8 365.5,158.4 410.0,153.0 454.5,147.6 499.0,142.2 543.5,139.2 588.0,136.2 632.5,133.2 677.0,130.2 721.5,130.2 766.0,130.2"/>
+<line x1="606" y1="78" x2="628" y2="78" stroke="#da1e28" stroke-width="2.2"/>
+<text x="634" y="82" font-family="Arial" font-size="12">cm</text>
+</svg>

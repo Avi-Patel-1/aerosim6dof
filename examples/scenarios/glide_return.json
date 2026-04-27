@@ -1,0 +1,25 @@
+{
+  "name": "glide_return",
+  "dt": 0.04,
+  "duration": 35.0,
+  "vehicle_config": "../vehicles/electric_uav.json",
+  "environment_config": "../environments/calm.json",
+  "initial": {
+    "position_m": [0.0, 250.0, 1200.0],
+    "velocity_mps": [48.0, -3.0, -1.0],
+    "euler_deg": [0.0, -2.0, -5.0]
+  },
+  "guidance": {
+    "mode": "target_intercept",
+    "target_position_m": [1250.0, 0.0, 420.0],
+    "throttle": 0.18
+  },
+  "sensors": {
+    "seed": 244
+  },
+  "events": {
+    "target_threshold_m": 80.0,
+    "qbar_limit_pa": 18000.0,
+    "load_limit_g": 5.0
+  }
+}

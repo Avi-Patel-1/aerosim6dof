@@ -1,0 +1,19 @@
+{
+  "duration_s": 12.0,
+  "event_count": 1,
+  "final": {
+    "altitude_m": 1295.8891881290251,
+    "mass_kg": 15.88265696183068,
+    "speed_mps": 201.57984452335813,
+    "time_s": 12.0,
+    "x_m": 1674.1701390577593,
+    "y_m": 0.0
+  },
+  "max_altitude_m": 1295.8891881290251,
+  "max_load_factor_g": 2.104344531944416,
+  "max_qbar_pa": 21936.366932247907,
+  "max_speed_mps": 201.57984452335813,
+  "min_target_distance_m": null,
+  "samples": 481,
+  "scenario": "high_aoa_stall"
+}

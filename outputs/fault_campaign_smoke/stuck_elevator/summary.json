@@ -1,0 +1,19 @@
+{
+  "duration_s": 18.0,
+  "event_count": 2,
+  "final": {
+    "altitude_m": 1451.0276369589653,
+    "mass_kg": 15.271385045647058,
+    "speed_mps": 121.05875359221348,
+    "time_s": 18.0,
+    "x_m": 2434.0288267860137,
+    "y_m": 0.0
+  },
+  "max_altitude_m": 1451.0276369589653,
+  "max_load_factor_g": 3.815535876015095,
+  "max_qbar_pa": 27216.35217752038,
+  "max_speed_mps": 215.02856339071403,
+  "min_target_distance_m": null,
+  "samples": 601,
+  "scenario": "nominal_ascent_stuck_elevator"
+}

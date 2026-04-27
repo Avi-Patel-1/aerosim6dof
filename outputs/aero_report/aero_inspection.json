@@ -1,0 +1,37 @@
+{
+  "compressibility": "prandtl_glauert",
+  "database_errors": [],
+  "derivatives": {
+    "cd0": 0.075,
+    "cd_alpha": 0.58,
+    "cd_beta": 0.22,
+    "cl_alpha": 3.1,
+    "cl_da": 0.09,
+    "cl_elevator": 0.48,
+    "cl_p": -0.45,
+    "cm_alpha": 0.78,
+    "cm_de": 1.05,
+    "cm_q": -9.5,
+    "cn_beta": 0.25,
+    "cn_dr": -0.18,
+    "cn_r": -0.35,
+    "compressibility": "prandtl_glauert",
+    "compressibility_cap": 1.55,
+    "cy_beta": -0.82,
+    "cy_rudder": 0.35,
+    "drag_rise_cd": 0.08,
+    "drag_rise_mach": 0.82
+  },
+  "has_database": true,
+  "reference": {
+    "area_m2": 0.052,
+    "chord_m": 0.48,
+    "span_m": 0.32
+  },
+  "stall_enabled": true,
+  "tables": [
+    "cl_alpha_by_mach",
+    "cm_q_by_mach"
+  ],
+  "vehicle": "baseline_research_vehicle"
+}

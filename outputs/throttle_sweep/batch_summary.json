@@ -1,0 +1,56 @@
+{
+  "count": 2,
+  "kind": "sweep",
+  "runs": [
+    {
+      "duration_s": 18.0,
+      "event_count": 2,
+      "final": {
+        "altitude_m": 333.2572698599491,
+        "mass_kg": 15.398297369105348,
+        "speed_mps": 197.3620034947686,
+        "time_s": 18.0,
+        "x_m": 3503.127347048395,
+        "y_m": 0.0
+      },
+      "label": "guidance.throttle=0.82",
+      "max_altitude_m": 333.2572698599491,
+      "max_load_factor_g": 2.224586513134214,
+      "max_qbar_pa": 39414.330545465025,
+      "max_speed_mps": 256.4682740127444,
+      "min_target_distance_m": null,
+      "parameters": {
+        "guidance.throttle": 0.82
+      },
+      "run_dir": "outputs/throttle_sweep/nominal_ascent_sweep_000",
+      "samples": 601,
+      "scenario": "nominal_ascent_sweep_000",
+      "sweep_index": 0
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 2,
+      "final": {
+        "altitude_m": 375.77513012546524,
+        "mass_kg": 15.271385045647058,
+        "speed_mps": 202.82496505083748,
+        "time_s": 18.0,
+        "x_m": 3597.189329170906,
+        "y_m": 0.0
+      },
+      "label": "guidance.throttle=0.86",
+      "max_altitude_m": 375.77513012546524,
+      "max_load_factor_g": 2.295343084805138,
+      "max_qbar_pa": 41844.2257905442,
+      "max_speed_mps": 264.6133316357358,
+      "min_target_distance_m": null,
+      "parameters": {
+        "guidance.throttle": 0.86
+      },
+      "run_dir": "outputs/throttle_sweep/nominal_ascent_sweep_001",
+      "samples": 601,
+      "scenario": "nominal_ascent_sweep_001",
+      "sweep_index": 1
+    }
+  ]
+}

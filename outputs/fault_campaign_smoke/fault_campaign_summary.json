@@ -1,0 +1,78 @@
+{
+  "count": 3,
+  "faults": [
+    "gps_dropout",
+    "thrust_loss",
+    "stuck_elevator"
+  ],
+  "kind": "fault_campaign",
+  "runs": [
+    {
+      "duration_s": 18.0,
+      "event_count": 2,
+      "fault_description": "GPS outage during closed-loop flight.",
+      "fault_name": "gps_dropout",
+      "final": {
+        "altitude_m": 375.77513012546524,
+        "mass_kg": 15.271385045647058,
+        "speed_mps": 202.82496505083748,
+        "time_s": 18.0,
+        "x_m": 3597.189329170906,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 375.77513012546524,
+      "max_load_factor_g": 2.295343084805138,
+      "max_qbar_pa": 41844.2257905442,
+      "max_speed_mps": 264.6133316357358,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/fault_campaign_smoke/gps_dropout",
+      "samples": 601,
+      "scenario": "nominal_ascent_gps_dropout"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 2,
+      "fault_description": "Temporary engine shutdown with restart allowed.",
+      "fault_name": "thrust_loss",
+      "final": {
+        "altitude_m": 223.7326210574358,
+        "mass_kg": 16.11390400507384,
+        "speed_mps": 162.59550642691468,
+        "time_s": 18.0,
+        "x_m": 3010.1315467641125,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 223.7326210574358,
+      "max_load_factor_g": 2.2841515652461957,
+      "max_qbar_pa": 24338.699973264887,
+      "max_speed_mps": 200.94111549146808,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/fault_campaign_smoke/thrust_loss",
+      "samples": 601,
+      "scenario": "nominal_ascent_thrust_loss"
+    },
+    {
+      "duration_s": 18.0,
+      "event_count": 2,
+      "fault_description": "Elevator locks at a nose-down deflection.",
+      "fault_name": "stuck_elevator",
+      "final": {
+        "altitude_m": 1451.0276369589653,
+        "mass_kg": 15.271385045647058,
+        "speed_mps": 121.05875359221348,
+        "time_s": 18.0,
+        "x_m": 2434.0288267860137,
+        "y_m": 0.0
+      },
+      "max_altitude_m": 1451.0276369589653,
+      "max_load_factor_g": 3.815535876015095,
+      "max_qbar_pa": 27216.35217752038,
+      "max_speed_mps": 215.02856339071403,
+      "min_target_distance_m": null,
+      "run_dir": "outputs/fault_campaign_smoke/stuck_elevator",
+      "samples": 601,
+      "scenario": "nominal_ascent_stuck_elevator"
+    }
+  ],
+  "scenario": "nominal_ascent"
+}

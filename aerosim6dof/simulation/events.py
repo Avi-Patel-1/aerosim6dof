@@ -1,0 +1,70 @@
+"""Event detection."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any
+
+
+@dataclass
+class EventDetector:
+    config: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.events: list[dict[str, Any]] = []
+        self.max_altitude_m = -1e99
+        self.max_altitude_time_s = 0.0
+        self.previous_vz_mps: float | None = None
+        self.burnout_seen = False
+        self.apogee_seen = False
+        self.ground_seen = False
+        self.qbar_seen = False
+        self.load_seen = False
+        self.saturation_seen: set[str] = set()
+        self.target_seen = False
+
+    def update(self, row: dict[str, Any], controls: dict[str, Any], above_ground_m: float) -> bool:
+        t = float(row["time_s"])
+        alt = float(row["altitude_m"])
+        if alt > self.max_altitude_m:
+            self.max_altitude_m = alt
+            self.max_altitude_time_s = t
+        if not self.burnout_seen and float(row.get("thrust_n", 0.0)) <= 1e-6 and t > 0.1:
+            self._add(t, "burnout", "Propulsion thrust reached zero.")
+            self.burnout_seen = True
+        vz = float(row.get("vz_mps", 0.0))
+        if self.previous_vz_mps is not None and self.previous_vz_mps > 0.0 and vz <= 0.0 and not self.apogee_seen:
+            self._add(t, "apogee", "Vertical velocity crossed through zero.")
+            self.apogee_seen = True
+        self.previous_vz_mps = vz
+        qbar_limit = float(self.config.get("qbar_limit_pa", 80_000.0))
+        if not self.qbar_seen and float(row.get("qbar_pa", 0.0)) > qbar_limit:
+            self._add(t, "qbar_exceedance", f"Dynamic pressure exceeded {qbar_limit:.0f} Pa.")
+            self.qbar_seen = True
+        load_limit = float(self.config.get("load_limit_g", 12.0))
+        if not self.load_seen and float(row.get("load_factor_g", 0.0)) > load_limit:
+            self._add(t, "load_factor_exceedance", f"Load factor exceeded {load_limit:.1f} g.")
+            self.load_seen = True
+        for surface in ("elevator", "aileron", "rudder"):
+            key = f"{surface}_saturated"
+            if controls.get(key, False) and surface not in self.saturation_seen:
+                self._add(t, "actuator_saturation", f"{surface} reached its command or rate limit.")
+                self.saturation_seen.add(surface)
+        miss = row.get("target_distance_m")
+        threshold = float(self.config.get("target_threshold_m", 25.0))
+        if isinstance(miss, (int, float)) and miss == miss and miss <= threshold and not self.target_seen:
+            self._add(t, "target_crossing", f"Target distance fell below {threshold:.1f} m.")
+            self.target_seen = True
+        if above_ground_m <= 0.0 and t > 0.0 and not self.ground_seen:
+            self._add(t, "ground_impact", "Vehicle intersected the terrain model.")
+            self.ground_seen = True
+            return True
+        return False
+
+    def finalize(self) -> list[dict[str, Any]]:
+        self._add(self.max_altitude_time_s, "max_altitude", f"Maximum altitude was {self.max_altitude_m:.2f} m.")
+        return sorted(self.events, key=lambda e: float(e["time_s"]))
+
+    def _add(self, t: float, event_type: str, description: str) -> None:
+        self.events.append({"time_s": float(t), "type": event_type, "description": description})
+

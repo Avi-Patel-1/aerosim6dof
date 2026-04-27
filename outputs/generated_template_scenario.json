@@ -1,0 +1,56 @@
+{
+  "dt": 0.03,
+  "duration": 18.0,
+  "environment_config": "../environments/calm.json",
+  "events": {
+    "load_limit_g": 12.0,
+    "qbar_limit_pa": 90000.0
+  },
+  "guidance": {
+    "heading_command_deg": 0.0,
+    "mode": "pitch_program",
+    "pitch_program": [
+      [
+        0.0,
+        14.0
+      ],
+      [
+        8.0,
+        10.0
+      ],
+      [
+        16.0,
+        6.0
+      ]
+    ],
+    "throttle": 0.85
+  },
+  "initial": {
+    "body_rates_dps": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "euler_deg": [
+      0.0,
+      8.0,
+      0.0
+    ],
+    "position_m": [
+      0.0,
+      0.0,
+      50.0
+    ],
+    "velocity_mps": [
+      85.0,
+      0.0,
+      12.0
+    ]
+  },
+  "integrator": "semi_implicit_euler",
+  "name": "generated_template",
+  "sensors": {
+    "seed": 1
+  },
+  "vehicle_config": "../vehicles/baseline.json"
+}

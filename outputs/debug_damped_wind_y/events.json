@@ -1,0 +1,32 @@
+[
+  {
+    "description": "Maximum altitude was 115.82 m.",
+    "time_s": 8.969999999999999,
+    "type": "max_altitude"
+  },
+  {
+    "description": "Vertical velocity crossed through zero.",
+    "time_s": 9.0,
+    "type": "apogee"
+  },
+  {
+    "description": "aileron reached its command or rate limit.",
+    "time_s": 9.6,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "rudder reached its command or rate limit.",
+    "time_s": 9.6,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "elevator reached its command or rate limit.",
+    "time_s": 10.11,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "Vehicle intersected the terrain model.",
+    "time_s": 11.94,
+    "type": "ground_impact"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "name": "calm_range",
+  "terrain": {
+    "base_altitude_m": 0.0,
+    "slope_x": 0.0,
+    "slope_y": 0.0
+  },
+  "wind": {
+    "steady_mps": [0.0, 0.0, 0.0]
+  }
+}
+

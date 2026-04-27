@@ -1,0 +1,37 @@
+[
+  {
+    "description": "rudder reached its command or rate limit.",
+    "time_s": 4.68,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "Maximum altitude was 177.19 m.",
+    "time_s": 10.86,
+    "type": "max_altitude"
+  },
+  {
+    "description": "Vertical velocity crossed through zero.",
+    "time_s": 10.889999999999999,
+    "type": "apogee"
+  },
+  {
+    "description": "aileron reached its command or rate limit.",
+    "time_s": 12.75,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "Propulsion thrust reached zero.",
+    "time_s": 13.02,
+    "type": "burnout"
+  },
+  {
+    "description": "elevator reached its command or rate limit.",
+    "time_s": 13.41,
+    "type": "actuator_saturation"
+  },
+  {
+    "description": "Vehicle intersected the terrain model.",
+    "time_s": 16.14,
+    "type": "ground_impact"
+  }
+]
