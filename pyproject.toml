@@ -12,5 +12,16 @@ license = { file = "LICENSE" }
 authors = [{ name = "Avi Patel" }]
 dependencies = ["numpy>=1.24"]
 
+[project.optional-dependencies]
+web = [
+  "fastapi>=0.110",
+  "httpx>=0.27",
+  "uvicorn[standard]>=0.27",
+]
+
 [project.scripts]
 aerosim6dof = "aerosim6dof.cli:main"
+aerosim6dof-web = "aerosim6dof.web.serve:main"
+
+[tool.setuptools.packages.find]
+include = ["aerosim6dof*"]

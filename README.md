@@ -1,8 +1,8 @@
-# High-Fidelity Flight Vehicle Simulation
+# AeroSim 6DOF
 
 `aerosim6dof` is a compact, inspectable six-degree-of-freedom flight simulation package for early GNC, vehicle concept, mission-performance, and sensor-analysis studies. It models rigid-body translation and rotation, quaternion attitude propagation, atmosphere and gravity variation, winds and gusts, propulsion and mass depletion, aerodynamic force and moment buildup, actuator dynamics, guidance/autopilot loops, sensor measurements, event detection, and report outputs.
 
-The core runtime uses Python 3.12 and NumPy only.
+The simulation core uses Python and NumPy. The browser dashboard is an optional FastAPI, React, Vite, TypeScript, and Three.js layer that wraps the same engine without replacing the command-line tools.
 
 ## Quick Start
 
@@ -50,6 +50,55 @@ python3 -m aerosim6dof sweep --scenario examples/scenarios/nominal_ascent.json -
 python3 -m aerosim6dof fault-campaign --scenario examples/scenarios/nominal_ascent.json --out outputs/fault_campaign
 ```
 
+## Browser Dashboard
+
+The web interface provides a full simulator workbench around the existing Python runtime:
+
+- Landing page with a live replay preview in the command-center monitor
+- 3D replay scene with range, coast, and night environments
+- Chase, orbit, cockpit, and map camera modes
+- Playback scrubber, speed controls, trail, axes, and wind overlays
+- Run browser with summary metrics, event timeline, and artifact links
+- Telemetry charts for flight, controls, and sensor channels
+- Scenario validation, run creation, batch, Monte Carlo, sweep, fault-campaign, trim, linearization, stability, model inspection, and report workflows
+- Guarded scenario editor with guided fields and raw JSON editing
+
+Install the optional web dependencies:
+
+```bash
+python3 -m pip install -e ".[web]"
+cd web
+npm install
+cd ..
+```
+
+Start the local dashboard:
+
+```bash
+./scripts/run_web_demo.sh
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5174/
+```
+
+For a production-style local build, generate the frontend bundle and serve it through FastAPI:
+
+```bash
+cd web
+npm run build
+cd ..
+python3 -m aerosim6dof.web.serve --host 0.0.0.0 --port 8000
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8000/
+```
+
 ## Outputs
 
 Each run directory contains:
@@ -88,9 +137,11 @@ aerosim6dof/
   simulation/    Dynamics, events, runner, logging, Monte Carlo and fault campaigns
   analysis/      Metrics, envelopes, validation, comparison, subsystem reports
   reports/       CSV, JSON, SVG, and HTML writers
+  web/           FastAPI browser API, run indexing, jobs, and artifact access
 examples/
 docs/
 tests/
+web/             React, Vite, TypeScript, and Three.js dashboard
 ```
 
 ## Extending
