@@ -99,6 +99,33 @@ Then open:
 http://127.0.0.1:8000/
 ```
 
+## Deployment
+
+The production deployment is a single web service. The Vite frontend is built into `web/dist`, and the FastAPI app serves that static bundle from the same origin as the `/api` routes. This keeps the replay dashboard, telemetry API, run creation, and artifact links on one public URL.
+
+The included `Dockerfile` builds the frontend and installs the Python web API. The included `render.yaml` is a ready-to-use Render Blueprint for a Docker web service.
+
+Build and test the production container locally:
+
+```bash
+docker build -t aerosim6dof .
+docker run --rm -p 10000:10000 -e PORT=10000 aerosim6dof
+```
+
+Then open:
+
+```text
+http://127.0.0.1:10000/
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:10000/api/health
+```
+
+Generated browser runs are written under `outputs/web_runs`. Use a persistent disk mounted at `/app/outputs` in hosted environments if generated runs need to survive redeploys.
+
 ## Outputs
 
 Each run directory contains:

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: aerosim6dof
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: true
