@@ -4,6 +4,16 @@
 
 The simulation core uses Python and NumPy. The browser dashboard is an optional FastAPI, React, Vite, TypeScript, and Three.js layer that wraps the same engine without replacing the command-line tools.
 
+## Live Simulator
+
+Open the public full-stack simulator at [https://aerosim6dof.onrender.com](https://aerosim6dof.onrender.com). The free Render instance may take about a minute to wake after inactivity.
+
+| Landing | Replay | Workflows |
+| --- | --- | --- |
+| ![AeroSim 6DOF landing page](docs/images/aerosim-live-landing.png) | ![AeroSim 6DOF replay view](docs/images/aerosim-live-replay.png) | ![AeroSim 6DOF workflow controls](docs/images/aerosim-live-workflows.png) |
+
+The landing page opens into the browser simulator. The replay view uses generated telemetry from the Python 6DOF engine, while the workflow tabs expose validation, run creation, campaign, engineering, model, editor, and report tools.
+
 ## Quick Start
 
 ```bash

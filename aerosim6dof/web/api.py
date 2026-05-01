@@ -63,6 +63,7 @@ router = APIRouter()
 EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="aerosim-web")
 JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
+SEED_LOCK = threading.Lock()
 
 CAPABILITIES = [
     {"id": "run", "group": "launch", "label": "Run"},
@@ -594,13 +595,32 @@ def _environment_path(environment_id: str) -> Path:
 
 def _discover_run_dirs() -> list[Path]:
     if not OUTPUTS_DIR.exists():
-        return []
+        _ensure_seed_run()
     run_dirs = []
     for summary_path in OUTPUTS_DIR.rglob("summary.json"):
         run_dir = summary_path.parent
         if (run_dir / "history.csv").exists():
             run_dirs.append(run_dir)
+    if not run_dirs:
+        _ensure_seed_run()
+        for summary_path in OUTPUTS_DIR.rglob("summary.json"):
+            run_dir = summary_path.parent
+            if (run_dir / "history.csv").exists():
+                run_dirs.append(run_dir)
     return run_dirs
+
+
+def _ensure_seed_run() -> None:
+    with SEED_LOCK:
+        if OUTPUTS_DIR.exists() and any((path.parent / "history.csv").exists() for path in OUTPUTS_DIR.rglob("summary.json")):
+            return
+        scenario_path = SCENARIOS_DIR / "nominal_ascent.json"
+        if not scenario_path.exists():
+            return
+        try:
+            run_scenario(Scenario.from_file(scenario_path), WEB_RUNS_DIR / "nominal_ascent_seed")
+        except (OSError, ValueError):
+            return
 
 
 def _build_run_summary(run_dir: Path) -> RunSummary:
