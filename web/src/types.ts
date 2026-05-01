@@ -99,3 +99,13 @@ export type TelemetrySeries = {
   controls: TelemetryRow[];
   sensors: TelemetryRow[];
 };
+
+export type ReplayHandoff = {
+  runId: string;
+  run: RunSummary | null;
+  telemetry: TelemetrySeries;
+  index: number;
+  environmentMode: "range" | "coast" | "night";
+  cameraMode: "chase" | "orbit" | "cockpit" | "map";
+  playing: boolean;
+};

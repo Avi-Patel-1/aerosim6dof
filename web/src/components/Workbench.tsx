@@ -40,7 +40,7 @@ import {
   validateScenario,
   validateScenarioJson
 } from "../api";
-import type { ActionResult, Capability, ConfigSummary, JobSummary, RunSummary, ScenarioDraft, ScenarioSummary, TelemetryRow, TelemetrySeries } from "../types";
+import type { ActionResult, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, TelemetryRow, TelemetrySeries } from "../types";
 import { ReplayScene } from "./ReplayScene";
 import { TelemetryChart } from "./TelemetryChart";
 
@@ -230,30 +230,31 @@ function ActionCard({ title, icon, running, onRun, children }: ActionCardProps) 
 }
 
 type WorkbenchProps = {
+  initialHandoff?: ReplayHandoff | null;
   onHome: () => void;
 };
 
-export function Workbench({ onHome }: WorkbenchProps) {
+export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [activeTab, setActiveTab] = useState<TabId>("replay");
   const [scenarios, setScenarios] = useState<ScenarioSummary[]>([]);
   const [vehicles, setVehicles] = useState<ConfigSummary[]>([]);
   const [environments, setEnvironments] = useState<ConfigSummary[]>([]);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
-  const [runs, setRuns] = useState<RunSummary[]>([]);
+  const [runs, setRuns] = useState<RunSummary[]>(initialHandoff?.run ? [initialHandoff.run] : []);
   const [selectedScenario, setSelectedScenario] = useState("nominal_ascent");
   const [selectedVehicle, setSelectedVehicle] = useState("baseline");
   const [secondVehicle, setSecondVehicle] = useState("electric_uav");
   const [selectedEnvironment, setSelectedEnvironment] = useState("calm");
-  const [selectedRunId, setSelectedRunId] = useState("");
+  const [selectedRunId, setSelectedRunId] = useState(initialHandoff?.runId ?? "");
   const [compareRunId, setCompareRunId] = useState("");
-  const [runDetail, setRunDetail] = useState<RunSummary | null>(null);
-  const [telemetry, setTelemetry] = useState<TelemetrySeries | null>(null);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [runDetail, setRunDetail] = useState<RunSummary | null>(initialHandoff?.run ?? null);
+  const [telemetry, setTelemetry] = useState<TelemetrySeries | null>(initialHandoff?.telemetry ?? null);
+  const [currentIndex, setCurrentIndex] = useState(initialHandoff?.index ?? 0);
+  const [playing, setPlaying] = useState(initialHandoff?.playing ?? false);
   const [chartMode, setChartMode] = useState<ChartMode>("flight");
   const [channelSelections, setChannelSelections] = useState<Record<ChartMode, string[]>>(DEFAULT_CHANNELS);
-  const [environmentMode, setEnvironmentMode] = useState<EnvironmentMode>("range");
-  const [cameraMode, setCameraMode] = useState<CameraMode>("chase");
+  const [environmentMode, setEnvironmentMode] = useState<EnvironmentMode>(initialHandoff?.environmentMode ?? "range");
+  const [cameraMode, setCameraMode] = useState<CameraMode>(initialHandoff?.cameraMode ?? "chase");
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [showTrail, setShowTrail] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
@@ -313,7 +314,7 @@ export function Workbench({ onHome }: WorkbenchProps) {
         setSelectedVehicle(vehicleItems.find((item) => item.id === "baseline")?.id ?? vehicleItems[0]?.id ?? "");
         setSecondVehicle(vehicleItems.find((item) => item.id === "electric_uav")?.id ?? vehicleItems[1]?.id ?? vehicleItems[0]?.id ?? "");
         setSelectedEnvironment(environmentItems[0]?.id ?? "");
-        const preferred = runItems.find((run) => run.id.startsWith("web_runs~")) ?? runItems.find((run) => run.scenario === "nominal_ascent") ?? runItems[0];
+        const preferred = runItems.find((run) => run.id === initialHandoff?.runId) ?? runItems.find((run) => run.id.startsWith("web_runs~")) ?? runItems.find((run) => run.scenario === "nominal_ascent") ?? runItems[0];
         setSelectedRunId(preferred?.id ?? "");
         setCompareRunId(runItems.find((run) => run.id !== preferred?.id)?.id ?? preferred?.id ?? "");
       })
@@ -321,7 +322,7 @@ export function Workbench({ onHome }: WorkbenchProps) {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialHandoff?.runId]);
 
   useEffect(() => {
     if (!selectedScenario) {
@@ -348,8 +349,11 @@ export function Workbench({ onHome }: WorkbenchProps) {
       return;
     }
     let mounted = true;
-    setTelemetry(null);
-    setCurrentIndex(0);
+    const canReuseHandoff = initialHandoff?.runId === selectedRunId && initialHandoff.telemetry.run_id === selectedRunId;
+    if (!canReuseHandoff) {
+      setTelemetry(null);
+      setCurrentIndex(0);
+    }
     Promise.all([getRun(selectedRunId), getTelemetry(selectedRunId, 3)])
       .then(([detail, series]) => {
         if (!mounted) {
@@ -357,6 +361,11 @@ export function Workbench({ onHome }: WorkbenchProps) {
         }
         setRunDetail(detail);
         setTelemetry(series);
+        if (canReuseHandoff) {
+          setCurrentIndex((index) => Math.min(index, Math.max(series.history.length - 1, 0)));
+        } else {
+          setCurrentIndex(0);
+        }
       })
       .catch((error: Error) => setMessage(error.message));
     return () => {

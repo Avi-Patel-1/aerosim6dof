@@ -1,11 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getRuns, getTelemetry } from "../api";
-import type { TelemetryRow } from "../types";
+import type { ReplayHandoff, RunSummary, TelemetryRow, TelemetrySeries } from "../types";
 import { ReplayScene } from "./ReplayScene";
 
 type LandingPageProps = {
   mode?: "idle" | "returning";
-  onEnter: () => void;
+  onEnter: (handoff?: ReplayHandoff) => void;
   onReturnComplete?: () => void;
 };
 
@@ -14,6 +14,8 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
   const sceneRef = useRef<HTMLElement | null>(null);
   const screenRef = useRef<HTMLSpanElement | null>(null);
   const [entering, setEntering] = useState(false);
+  const [previewRun, setPreviewRun] = useState<RunSummary | null>(null);
+  const [previewTelemetry, setPreviewTelemetry] = useState<TelemetrySeries | null>(null);
   const [previewRows, setPreviewRows] = useState<TelemetryRow[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
   const returning = mode === "returning";
@@ -49,21 +51,28 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
 
   useEffect(() => {
     let mounted = true;
+    let selectedRun: RunSummary | null = null;
     getRuns()
       .then((runs) => {
         const previewRun = runs.find((run) => run.id.startsWith("web_runs~")) ?? runs[0];
         if (!previewRun) {
           return null;
         }
-        return getTelemetry(previewRun.id, 6);
+        selectedRun = previewRun;
+        return getTelemetry(previewRun.id, 3);
       })
       .then((series) => {
         if (mounted && series?.history.length) {
+          setPreviewRun(selectedRun);
+          setPreviewTelemetry(series);
           setPreviewRows(series.history);
+          setPreviewIndex((index) => Math.min(index, series.history.length - 1));
         }
       })
       .catch(() => {
         if (mounted) {
+          setPreviewRun(null);
+          setPreviewTelemetry(null);
           setPreviewRows([]);
         }
       });
@@ -116,7 +125,18 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
       sceneRef.current.style.transform = transform;
     }
     setEntering(true);
-    window.setTimeout(onEnter, 1450);
+    const handoff = previewTelemetry?.history.length
+      ? {
+          runId: previewTelemetry.run_id,
+          run: previewRun,
+          telemetry: previewTelemetry,
+          index: Math.min(previewIndex, previewTelemetry.history.length - 1),
+          environmentMode: "night" as const,
+          cameraMode: "chase" as const,
+          playing: true
+        }
+      : undefined;
+    window.setTimeout(() => onEnter(handoff), 1450);
   };
 
   return (
