@@ -11,6 +11,7 @@ import {
   Home,
   Layers3,
   Loader2,
+  Pause,
   Play,
   RadioTower,
   RotateCcw,
@@ -738,6 +739,16 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 showWind={showWind}
               />
               <div className="scrubber">
+                <button
+                  className="timeline-toggle"
+                  type="button"
+                  onClick={() => setPlaying((value) => !value)}
+                  disabled={!telemetry?.history.length}
+                  aria-label={playing ? "Pause replay" : "Play replay"}
+                >
+                  {playing ? <Pause size={17} /> : <Play size={17} />}
+                  <span>{playing ? "Pause" : "Play"}</span>
+                </button>
                 <input
                   type="range"
                   min="0"

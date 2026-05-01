@@ -837,11 +837,33 @@ svg {
 .scrubber {
   min-height: 76px;
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 18px;
   padding: 0;
   border-top: 0;
+}
+
+.timeline-toggle {
+  min-height: 42px;
+  min-width: 118px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid rgba(205, 221, 255, 0.22);
+  border-radius: 40px;
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.16);
+  white-space: nowrap;
+}
+
+.timeline-toggle:hover {
+  background: rgba(205, 221, 255, 0.24);
+}
+
+.timeline-toggle span {
+  color: var(--color-starlight);
 }
 
 .scrubber input {
