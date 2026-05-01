@@ -594,30 +594,33 @@ def _environment_path(environment_id: str) -> Path:
 
 
 def _discover_run_dirs() -> list[Path]:
-    if not OUTPUTS_DIR.exists():
+    run_dirs = _find_run_dirs()
+    if not run_dirs or (_seed_suite_dir().exists() and not _seed_suite_ready()):
         _ensure_seed_run()
+        run_dirs = _find_run_dirs()
+    return run_dirs
+
+
+def _find_run_dirs() -> list[Path]:
+    if not OUTPUTS_DIR.exists():
+        return []
     run_dirs = []
     for summary_path in OUTPUTS_DIR.rglob("summary.json"):
         run_dir = summary_path.parent
         if (run_dir / "history.csv").exists():
             run_dirs.append(run_dir)
-    if not run_dirs:
-        _ensure_seed_run()
-        for summary_path in OUTPUTS_DIR.rglob("summary.json"):
-            run_dir = summary_path.parent
-            if (run_dir / "history.csv").exists():
-                run_dirs.append(run_dir)
     return run_dirs
 
 
 def _ensure_seed_run() -> None:
     with SEED_LOCK:
-        if OUTPUTS_DIR.exists() and any((path.parent / "history.csv").exists() for path in OUTPUTS_DIR.rglob("summary.json")):
+        if _seed_suite_ready():
             return
         if not SCENARIOS_DIR.exists():
             return
         try:
-            batch_run(SCENARIOS_DIR, WEB_RUNS_DIR / "seed_scenario_suite")
+            result = batch_run(SCENARIOS_DIR, _seed_suite_dir())
+            write_json(_seed_suite_marker(), {"generated_at_utc": _utc_now(), "scenario_count": result.get("count", 0)})
         except (OSError, ValueError):
             scenario_path = SCENARIOS_DIR / "nominal_ascent.json"
             if not scenario_path.exists():
@@ -626,6 +629,23 @@ def _ensure_seed_run() -> None:
                 run_scenario(Scenario.from_file(scenario_path), WEB_RUNS_DIR / "nominal_ascent_seed")
             except (OSError, ValueError):
                 return
+
+
+def _seed_suite_dir() -> Path:
+    return WEB_RUNS_DIR / "seed_scenario_suite"
+
+
+def _seed_suite_marker() -> Path:
+    return _seed_suite_dir() / ".seed_complete.json"
+
+
+def _seed_suite_ready() -> bool:
+    marker = _seed_suite_marker()
+    if not marker.exists():
+        return False
+    scenario_count = len(list(SCENARIOS_DIR.glob("*.json")))
+    run_count = sum(1 for path in _seed_suite_dir().glob("*/summary.json") if (path.parent / "history.csv").exists())
+    return scenario_count > 0 and run_count >= scenario_count
 
 
 def _build_run_summary(run_dir: Path) -> RunSummary:
