@@ -2,7 +2,7 @@ services:
   - type: web
     name: aerosim6dof
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
