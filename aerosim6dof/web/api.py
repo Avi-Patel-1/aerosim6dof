@@ -614,13 +614,18 @@ def _ensure_seed_run() -> None:
     with SEED_LOCK:
         if OUTPUTS_DIR.exists() and any((path.parent / "history.csv").exists() for path in OUTPUTS_DIR.rglob("summary.json")):
             return
-        scenario_path = SCENARIOS_DIR / "nominal_ascent.json"
-        if not scenario_path.exists():
+        if not SCENARIOS_DIR.exists():
             return
         try:
-            run_scenario(Scenario.from_file(scenario_path), WEB_RUNS_DIR / "nominal_ascent_seed")
+            batch_run(SCENARIOS_DIR, WEB_RUNS_DIR / "seed_scenario_suite")
         except (OSError, ValueError):
-            return
+            scenario_path = SCENARIOS_DIR / "nominal_ascent.json"
+            if not scenario_path.exists():
+                return
+            try:
+                run_scenario(Scenario.from_file(scenario_path), WEB_RUNS_DIR / "nominal_ascent_seed")
+            except (OSError, ValueError):
+                return
 
 
 def _build_run_summary(run_dir: Path) -> RunSummary:

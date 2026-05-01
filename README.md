@@ -6,7 +6,7 @@ The simulation core uses Python and NumPy. The browser dashboard is an optional 
 
 ## Live Simulator
 
-Open the public full-stack simulator at [https://aerosim6dof.onrender.com](https://aerosim6dof.onrender.com). The free Render instance may take about a minute to wake after inactivity.
+Open the public full-stack simulator at [https://aerosim6dof.onrender.com](https://aerosim6dof.onrender.com). The free Render instance may take about a minute to wake after inactivity. Fresh deployments automatically preload the packaged scenario suite so replay data is available immediately.
 
 | Landing | Replay | Workflows |
 | --- | --- | --- |

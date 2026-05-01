@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+outputs
+web/node_modules
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
