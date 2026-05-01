@@ -13,12 +13,16 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
   const rootRef = useRef<HTMLElement | null>(null);
   const sceneRef = useRef<HTMLElement | null>(null);
   const screenRef = useRef<HTMLSpanElement | null>(null);
+  const previewRunRef = useRef<RunSummary | null>(null);
+  const previewTelemetryRef = useRef<TelemetrySeries | null>(null);
+  const previewIndexRef = useRef(0);
   const [entering, setEntering] = useState(false);
   const [previewRun, setPreviewRun] = useState<RunSummary | null>(null);
   const [previewTelemetry, setPreviewTelemetry] = useState<TelemetrySeries | null>(null);
   const [previewRows, setPreviewRows] = useState<TelemetryRow[]>([]);
   const [previewIndex, setPreviewIndex] = useState(0);
   const returning = mode === "returning";
+  const previewReady = Boolean(previewTelemetry?.history.length);
 
   const syncZoomTarget = () => {
     const root = rootRef.current;
@@ -63,6 +67,8 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
       })
       .then((series) => {
         if (mounted && series?.history.length) {
+          previewRunRef.current = selectedRun;
+          previewTelemetryRef.current = series;
           setPreviewRun(selectedRun);
           setPreviewTelemetry(series);
           setPreviewRows(series.history);
@@ -71,6 +77,8 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
       })
       .catch(() => {
         if (mounted) {
+          previewRunRef.current = null;
+          previewTelemetryRef.current = null;
           setPreviewRun(null);
           setPreviewTelemetry(null);
           setPreviewRows([]);
@@ -82,14 +90,30 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
   }, []);
 
   useEffect(() => {
-    if (!previewRows.length || entering || returning) {
+    if (!previewRows.length || returning) {
       return;
     }
     const timer = window.setInterval(() => {
-      setPreviewIndex((index) => (index + 1 >= previewRows.length ? 0 : index + 1));
+      setPreviewIndex((index) => {
+        const next = index + 1 >= previewRows.length ? 0 : index + 1;
+        previewIndexRef.current = next;
+        return next;
+      });
     }, 120);
     return () => window.clearInterval(timer);
-  }, [entering, previewRows.length, returning]);
+  }, [previewRows.length, returning]);
+
+  useEffect(() => {
+    previewRunRef.current = previewRun;
+  }, [previewRun]);
+
+  useEffect(() => {
+    previewTelemetryRef.current = previewTelemetry;
+  }, [previewTelemetry]);
+
+  useEffect(() => {
+    previewIndexRef.current = previewIndex;
+  }, [previewIndex]);
 
   useEffect(() => {
     if (!returning) {
@@ -117,7 +141,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
   }, [onReturnComplete, returning]);
 
   const enter = () => {
-    if (entering || returning) {
+    if (entering || returning || !previewReady) {
       return;
     }
     const transform = syncZoomTarget();
@@ -125,25 +149,28 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
       sceneRef.current.style.transform = transform;
     }
     setEntering(true);
-    const handoff = previewTelemetry?.history.length
-      ? {
-          runId: previewTelemetry.run_id,
-          run: previewRun,
-          telemetry: previewTelemetry,
-          index: Math.min(previewIndex, previewTelemetry.history.length - 1),
-          environmentMode: "night" as const,
-          cameraMode: "chase" as const,
-          playing: true
-        }
-      : undefined;
-    window.setTimeout(() => onEnter(handoff), 1450);
+    window.setTimeout(() => {
+      const telemetry = previewTelemetryRef.current;
+      const handoff = telemetry?.history.length
+        ? {
+            runId: telemetry.run_id,
+            run: previewRunRef.current,
+            telemetry,
+            index: Math.min(previewIndexRef.current, telemetry.history.length - 1),
+            environmentMode: "night" as const,
+            cameraMode: "chase" as const,
+            playing: true
+          }
+        : undefined;
+      onEnter(handoff);
+    }, 1450);
   };
 
   return (
     <main ref={rootRef} className={`mercury-intro ${entering ? "entering" : ""} ${returning ? "returning" : ""}`}>
       <nav className="intro-nav" aria-label="Intro">
         <span>AeroSim 6DOF</span>
-        <button onClick={enter} disabled={returning}>Open simulator</button>
+        <button onClick={enter} disabled={returning || !previewReady}>Open simulator</button>
       </nav>
 
       <section ref={sceneRef} className="observatory-scene" aria-label="Mountain top command center">
@@ -153,7 +180,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
         <div className="glass-wall" aria-hidden="true" />
         <div className="floor-grid" aria-hidden="true" />
 
-        <button className="command-console" onClick={enter} aria-label="Enter AeroSim 6DOF simulator">
+        <button className="command-console" onClick={enter} disabled={returning || !previewReady} aria-label="Enter AeroSim 6DOF simulator">
           <span className="monitor-stand" aria-hidden="true" />
           <span className="monitor-shell">
             <span ref={screenRef} className="monitor-screen">
@@ -177,7 +204,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
                 )}
               </span>
               <span className="screen-kicker">LIVE 6DOF</span>
-              <span className="screen-status">READY</span>
+              <span className="screen-status">{previewReady ? "READY" : "SYNCING"}</span>
             </span>
           </span>
         </button>
@@ -185,7 +212,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
         <div className="intro-copy">
           <p>Mountain desk flight lab</p>
           <h1>AeroSim 6DOF</h1>
-          <button onClick={enter} disabled={returning}>Enter simulation</button>
+          <button onClick={enter} disabled={returning || !previewReady}>Enter simulation</button>
         </div>
       </section>
     </main>
