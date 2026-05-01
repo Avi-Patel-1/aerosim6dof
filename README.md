@@ -14,6 +14,52 @@ Open the public full-stack simulator at [https://aerosim6dof.onrender.com](https
 
 The landing page opens into the browser simulator. The replay view uses generated telemetry from the Python 6DOF engine, while the workflow tabs expose validation, run creation, campaign, engineering, model, editor, and report tools.
 
+### What the Site Is
+
+The live site is a browser front end for the same 6DOF simulation engine used by the command-line tools. It is meant to make the model easier to inspect, share, and use: select a scenario, replay the vehicle in 3D, inspect telemetry, run new cases, generate reports, compare outputs, and explore vehicle/environment assumptions without starting from a terminal.
+
+This is useful when you want to evaluate early flight-vehicle concepts, compare guidance or vehicle settings, test robustness against faults and uncertainty, explain a trajectory to someone visually, or review whether a simulated run stayed within speed, load, dynamic pressure, control, and sensor limits.
+
+### How to Use the Live Simulator
+
+1. Open [https://aerosim6dof.onrender.com](https://aerosim6dof.onrender.com).
+2. Click **Enter simulation** or **Open simulator** on the landing page.
+3. In **Replay**, choose a preloaded run from the **Run** selector.
+4. Use **Play**, the scrubber, and the speed buttons to move through the trajectory.
+5. Switch environments, cameras, telemetry groups, and channels to inspect what happened.
+6. Use the workflow tabs to generate new runs, campaigns, engineering analyses, model reports, scenario drafts, and downloadable artifacts.
+
+### Main Controls
+
+| Area | What it does |
+| --- | --- |
+| **Home** | Leaves the workbench and returns to the landing page. |
+| **Replay** | Shows the 3D flight replay, current metrics, event timeline, telemetry charts, and artifact links for a selected run. |
+| **Run selector** | Switches between preloaded scenarios and newly generated runs. Fresh deployments preload the packaged scenario suite. |
+| **Range / Coast / Night** | Changes the replay environment style so the same trajectory can be inspected in different visual contexts. |
+| **Chase / Orbit / Cockpit / Map** | Changes the camera mode for following, inspecting, riding with, or mapping the vehicle path. |
+| **Play / Loop** | Starts or stops replay playback. |
+| **Scrubber** | Moves to an exact telemetry sample in the run. Charts and 3D pose update together. |
+| **0.5x / 1x / 2x / 4x** | Changes replay speed. |
+| **Trail / Axes / Wind** | Toggles trajectory history, body axes, and wind visualization overlays. |
+| **Telemetry flight / controls / sensors** | Switches chart data between vehicle motion, actuator/control behavior, and sensor outputs. |
+| **Add channel** | Adds another telemetry channel to the chart for comparison. Clicking a channel chip removes it. |
+| **Launch** | Validates scenarios, runs selected scenarios, compares two runs, builds reports, and creates sensor reports. |
+| **Campaigns** | Runs batches, Monte Carlo dispersions, parameter sweeps, and fault campaigns. |
+| **Engineering** | Runs trim, trim sweeps, linearization, stability analysis, and linear-model reports. |
+| **Models** | Inspects vehicle configs, compares vehicles, generates scenario templates, and creates aero, propulsion, and environment reports. |
+| **Editor** | Edits scenario drafts through guided fields or raw JSON, validates them, saves drafts, and runs drafts without changing packaged examples. |
+| **Reports** | Collects latest results, generated HTML reports, SVG plots, CSV/JSON artifacts, available capabilities, and background job status. |
+
+### Practical Workflows
+
+- **Trajectory review:** choose a run, press **Play**, scrub to key events, and compare altitude, speed, qbar, load factor, controls, and sensor channels.
+- **Scenario comparison:** use **Launch** to run or compare two cases, then open the generated report artifacts.
+- **Robustness testing:** use **Campaigns** for Monte Carlo samples, parameter sweeps, or fault campaigns to see how sensitive a configuration is.
+- **Control and stability checks:** use **Engineering** to trim a vehicle, sweep trim points, linearize a scenario, and inspect stability outputs.
+- **Model inspection:** use **Models** to review vehicle, aerodynamic, propulsion, and environment assumptions before trusting a run.
+- **New scenario drafting:** use **Editor** to start from a packaged scenario, adjust duration, initial state, vehicle, environment, guidance, sensors, and event limits, then validate and run the draft.
+
 ## Quick Start
 
 ```bash
