@@ -690,6 +690,7 @@ svg {
 
 .console-overview h2 {
   max-width: 820px;
+  overflow-wrap: anywhere;
 }
 
 .console-overview p:not(.eyebrow) {
@@ -1574,6 +1575,354 @@ textarea {
   font-size: 10px;
 }
 
+/* Operations telemetry */
+.telemetry-ops-shell,
+.operations-telemetry-panel {
+  display: grid;
+  gap: 24px;
+}
+
+.telemetry-ops-runbar,
+.operations-telemetry-header,
+.operations-telemetry-actions,
+.operations-subsystem-tabs,
+.operations-suggestion-grid,
+.operations-layout-item,
+.operations-channel-option {
+  display: flex;
+  align-items: center;
+}
+
+.telemetry-ops-runbar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(240px, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+  border-top: 1px solid rgba(112, 112, 125, 0.48);
+  border-bottom: 1px solid rgba(112, 112, 125, 0.34);
+  padding: 24px 0;
+}
+
+.telemetry-ops-runmeta {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--color-silver);
+  font-size: 0.875rem;
+}
+
+.telemetry-ops-runmeta strong {
+  color: var(--color-starlight);
+  font-weight: 480;
+}
+
+.operations-telemetry-panel {
+  border-top: 1px solid rgba(112, 112, 125, 0.5);
+  padding-top: 28px;
+}
+
+.operations-telemetry-header {
+  justify-content: space-between;
+  gap: 24px;
+  align-items: start;
+}
+
+.operations-telemetry-header h2 {
+  margin-bottom: 10px;
+}
+
+.operations-telemetry-actions {
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.operations-telemetry-actions .field {
+  min-width: 220px;
+}
+
+.operations-subsystem-tabs {
+  gap: 6px;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(112, 112, 125, 0.34);
+  border-bottom: 1px solid rgba(112, 112, 125, 0.34);
+  padding: 10px 0;
+}
+
+.operations-subsystem-tabs button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 40px;
+  color: var(--color-silver);
+  background: transparent;
+  padding: 0 12px;
+  font-size: 0.8125rem;
+}
+
+.operations-subsystem-tabs button:hover,
+.operations-subsystem-tabs button.active {
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.16);
+}
+
+.operations-telemetry-grid {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.78fr) minmax(0, 1.7fr) minmax(250px, 0.72fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.operations-channel-browser,
+.operations-telemetry-main,
+.operations-context-rail {
+  min-width: 0;
+  display: grid;
+  gap: 22px;
+}
+
+.operations-search span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.operations-pinned-row,
+.operations-chart-card,
+.operations-current-values,
+.operations-suggestion-panel,
+.operations-compare-panel,
+.operations-layouts-panel,
+.operations-alarm-panel,
+.operations-events-panel {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid rgba(112, 112, 125, 0.42);
+  padding-top: 18px;
+}
+
+.operations-channel-list {
+  display: grid;
+  max-height: 640px;
+  overflow: auto;
+  border-top: 1px solid rgba(112, 112, 125, 0.3);
+}
+
+.operations-channel-option {
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 64px;
+  border-bottom: 1px solid rgba(112, 112, 125, 0.28);
+}
+
+.operations-channel-option > button:first-child {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+  border: 0;
+  color: var(--color-starlight);
+  background: transparent;
+  padding: 12px 0;
+  text-align: left;
+}
+
+.operations-channel-option strong {
+  min-width: 0;
+  font-size: 0.9rem;
+  font-weight: 480;
+  overflow-wrap: anywhere;
+}
+
+.operations-channel-option span,
+.operations-layout-item span {
+  min-width: 0;
+  color: var(--color-silver);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.operations-channel-option > button:last-child,
+.operations-layout-item > button:last-child {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(112, 112, 125, 0.44);
+  border-radius: 50%;
+  color: var(--color-silver);
+  background: rgba(205, 221, 255, 0.08);
+}
+
+.operations-channel-option.selected > button:first-child,
+.operations-channel-option:hover > button:first-child {
+  color: var(--color-ghost-blue);
+}
+
+.operations-channel-option > button:last-child.active {
+  color: var(--color-starlight);
+  border-color: rgba(237, 237, 243, 0.62);
+  background: rgba(205, 221, 255, 0.18);
+}
+
+.operations-telemetry-chart {
+  min-height: 332px;
+}
+
+.operations-chart-header {
+  align-items: start;
+}
+
+.operations-chart-legend {
+  max-width: 100%;
+  justify-content: flex-start;
+}
+
+.operations-chart-legend span {
+  align-items: flex-start;
+  max-width: 210px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 7px;
+  row-gap: 2px;
+}
+
+.operations-chart-legend b,
+.operations-chart-legend em,
+.operations-chart-legend small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operations-chart-legend b {
+  color: var(--color-starlight);
+  font-weight: 480;
+}
+
+.operations-chart-legend em,
+.operations-chart-legend small {
+  grid-column: 2;
+  color: var(--color-silver);
+  font-style: normal;
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.7rem;
+}
+
+.operations-telemetry-chart svg {
+  height: 288px;
+}
+
+.operations-current-values {
+  overflow: auto;
+}
+
+.operations-current-values table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.operations-current-values th,
+.operations-current-values td {
+  border-bottom: 1px solid rgba(112, 112, 125, 0.28);
+  padding: 10px 10px 10px 0;
+  color: var(--color-silver);
+  font-size: 0.8125rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.operations-current-values th {
+  color: var(--color-starlight);
+  font-weight: 480;
+}
+
+.operations-current-values tr.active td,
+.operations-current-values tr:hover td {
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.06);
+}
+
+.operations-current-values code {
+  color: var(--color-ghost-blue);
+  font-size: 0.75rem;
+}
+
+.operations-suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.operations-suggestion-grid button {
+  min-height: 72px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  border: 1px solid rgba(112, 112, 125, 0.38);
+  border-radius: 0;
+  color: var(--color-starlight);
+  background: rgba(23, 23, 33, 0.42);
+  padding: 12px;
+  text-align: left;
+}
+
+.operations-suggestion-grid button.active,
+.operations-suggestion-grid button:hover {
+  border-color: rgba(237, 237, 243, 0.6);
+  background: rgba(205, 221, 255, 0.12);
+}
+
+.operations-suggestion-grid span {
+  color: var(--color-silver);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.operations-suggestion-grid strong {
+  font-size: 0.86rem;
+  font-weight: 480;
+}
+
+.operations-layout-list {
+  display: grid;
+  gap: 8px;
+}
+
+.operations-layout-item {
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid rgba(112, 112, 125, 0.24);
+  padding-bottom: 8px;
+}
+
+.operations-layout-item > button:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 0;
+  color: var(--color-starlight);
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.operations-context-rail .event-item {
+  width: 100%;
+  border: 1px solid rgba(112, 112, 125, 0.24);
+  background: rgba(23, 23, 33, 0.34);
+  text-align: left;
+}
+
+.operations-context-rail .event-item.warning,
+.operations-context-rail .event-item.critical {
+  border-color: rgba(237, 237, 243, 0.52);
+}
+
 /* Tools and forms */
 .tool-grid {
   display: grid;
@@ -1915,7 +2264,9 @@ pre {
 
   .console-overview,
   .editor-layout,
-  .reports-layout {
+  .reports-layout,
+  .telemetry-ops-runbar,
+  .operations-telemetry-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2007,6 +2358,7 @@ pre {
 
   .stage-header,
   .telemetry-header,
+  .operations-telemetry-header,
   .chart-header,
   .editor-header {
     grid-template-columns: 1fr;
@@ -2022,8 +2374,34 @@ pre {
 
   .stage-actions,
   .telemetry-tools,
+  .operations-telemetry-actions,
   .editor-actions {
     justify-content: flex-start;
+  }
+
+  .operations-telemetry-header,
+  .operations-telemetry-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .operations-telemetry-actions .secondary-action,
+  .operations-telemetry-actions .field {
+    width: 100%;
+  }
+
+  .operations-subsystem-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 12px;
+  }
+
+  .operations-subsystem-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .operations-suggestion-grid {
+    grid-template-columns: 1fr;
   }
 
   .replay-stage {

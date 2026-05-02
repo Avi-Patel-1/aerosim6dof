@@ -34,7 +34,8 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 | Area | What it does |
 | --- | --- |
 | **Home** | Leaves the workbench and returns to the landing page. |
-| **Replay** | Shows the 3D flight replay, current metrics, event timeline, telemetry charts, and artifact links for a selected run. |
+| **Replay** | Shows the 3D flight replay, current metrics, event timeline, quick telemetry charts, and artifact links for a selected run. |
+| **Telemetry** | Opens the operations telemetry console with subsystem grouping, search, pinned channels, current/min/max readouts, cursor-linked charts, comparison traces, CSV export, and saved chart layouts. |
 | **Run selector** | Switches between preloaded scenarios and newly generated runs. Fresh deployments preload the packaged scenario suite. |
 | **Range / Coast / Night** | Changes the replay environment style so the same trajectory can be inspected in different visual contexts. |
 | **Chase / Orbit / Cockpit / Map / Range Safety** | Changes the camera mode for following, inspecting, riding with, mapping, or reviewing the engagement geometry from a range-safety perspective. |
@@ -60,6 +61,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 - **Control and stability checks:** use **Engineering** to trim a vehicle, sweep trim points, linearize a scenario, and inspect stability outputs.
 - **Model inspection:** use **Models** to review vehicle, aerodynamic, propulsion, and environment assumptions before trusting a run.
 - **Intercept studies:** use **Editor** to add primary and decoy targets plus interceptor definitions, then replay target labels, miss-distance markers, interceptor geometry, and engagement reports.
+- **Operations telemetry review:** use **Telemetry** to answer what happened by subsystem, pin important parameters, compare against another run, inspect current/min/max values, and export selected channels for offline review.
 - **New scenario drafting:** use **Editor** to start from a packaged scenario, adjust duration, initial state, vehicle, environment, guidance, sensors, target/interceptor objects, and event limits, then validate and run the draft.
 
 ## Quick Start
@@ -119,6 +121,7 @@ The web interface provides a full simulator workbench around the existing Python
 - Playback scrubber, speed controls, colored trails, axes, wind, velocity, acceleration, sensor, terrain, target, and interceptor overlays
 - Run browser with summary metrics, event timeline, and artifact links
 - Telemetry charts for flight, controls, and sensor channels
+- Dedicated operations telemetry console with subsystem panels, parameter search, pinned channels, min/max/current values, cursor-linked multi-axis charts, compare traces, selected-channel export, and local saved layouts
 - Scenario validation, run creation, batch, Monte Carlo, sweep, fault-campaign, trim, linearization, stability, model inspection, and report workflows
 - Engagement reports for target/interceptor runs
 - Guarded scenario editor with guided mission, target, interceptor, and raw JSON editing

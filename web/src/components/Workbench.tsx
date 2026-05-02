@@ -50,11 +50,12 @@ import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary,
 import { activeAlarmCount } from "../alarms";
 import { channelLabel, channelLabelWithUnit } from "../telemetry";
 import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
+import { OperationsTelemetryPanel } from "./OperationsTelemetryPanel";
 import { ParameterInfoPanel } from "./ParameterInfoPanel";
 import { ReplayScene } from "./ReplayScene";
 import { TelemetryChart } from "./TelemetryChart";
 
-type TabId = "replay" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
+type TabId = "replay" | "telemetry" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
 type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
 type CameraMode = "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
@@ -62,6 +63,7 @@ type TrailColorMode = "plain" | "speed" | "qbar" | "load" | "altitude";
 
 const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "replay", label: "Replay", title: "Replay the vehicle in full flight context.", subtitle: "Scrub attitude, trajectory, events, and sampled telemetry from the selected output run." },
+  { id: "telemetry", label: "Telemetry", title: "Answer what happened, when, and why.", subtitle: "Search, pin, compare, export, and inspect subsystem telemetry like a mission operations console." },
   { id: "launch", label: "Launch", title: "Run, validate, compare, and report.", subtitle: "Execute scenarios through the existing Python engine and keep generated outputs under web runs." },
   { id: "campaigns", label: "Campaigns", title: "Batch the uncertainty space.", subtitle: "Monte Carlo, parameter sweeps, fault campaigns, and batch workflows are available from one console." },
   { id: "engineering", label: "Engineering", title: "Trim, linearize, and inspect stability.", subtitle: "Use the simulator's engineering analysis commands without leaving the browser." },
@@ -341,6 +343,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [compareRunId, setCompareRunId] = useState("");
   const [runDetail, setRunDetail] = useState<RunSummary | null>(initialHandoff?.run ?? null);
   const [telemetry, setTelemetry] = useState<TelemetrySeries | null>(initialHandoff?.telemetry ?? null);
+  const [compareTelemetry, setCompareTelemetry] = useState<TelemetrySeries | null>(null);
   const [alarms, setAlarms] = useState<AlarmSummary[]>([]);
   const [acknowledgedAlarms, setAcknowledgedAlarms] = useState<Record<string, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(initialHandoff?.index ?? 0);
@@ -504,6 +507,28 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       mounted = false;
     };
   }, [selectedRunId]);
+
+  useEffect(() => {
+    if (!compareRunId || compareRunId === selectedRunId) {
+      setCompareTelemetry(null);
+      return;
+    }
+    let mounted = true;
+    getTelemetry(compareRunId, 3)
+      .then((series) => {
+        if (mounted) {
+          setCompareTelemetry(series);
+        }
+      })
+      .catch(() => {
+        if (mounted) {
+          setCompareTelemetry(null);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [compareRunId, selectedRunId]);
 
   useEffect(() => {
     if (!playing || !telemetry?.history.length) {
@@ -806,6 +831,28 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     setCurrentIndex(nearestIndex);
   };
 
+  const jumpToTelemetryTime = (timeS: number) => {
+    const rows = telemetry?.history ?? [];
+    if (!rows.length || !Number.isFinite(timeS)) {
+      return;
+    }
+    let nearestIndex = 0;
+    let nearestDelta = Number.POSITIVE_INFINITY;
+    rows.forEach((row, index) => {
+      const value = numeric(row.time_s);
+      if (value === null) {
+        return;
+      }
+      const delta = Math.abs(value - timeS);
+      if (delta < nearestDelta) {
+        nearestDelta = delta;
+        nearestIndex = index;
+      }
+    });
+    setPlaying(false);
+    setCurrentIndex(nearestIndex);
+  };
+
   const adjustReplayScale = (delta: number) => {
     setReplayScale((value) => Number(clamp(value + delta, REPLAY_SCALE_MIN, REPLAY_SCALE_MAX).toFixed(2)));
   };
@@ -824,6 +871,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const dataArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "csv" || artifact.kind === "json").slice(0, 8) ?? [];
   const latestResult = results[0];
   const activeTabInfo = TABS.find((tab) => tab.id === activeTab) ?? TABS[0];
+  const compareRunLabel = runs.find((run) => run.id === compareRunId)?.scenario ?? compareRunId;
   const faultList = faults
     .split(",")
     .map((item) => item.trim())
@@ -1118,6 +1166,31 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
               <ParameterInfoPanel channel={activeParameterKey} row={chartRow} metadata={telemetry?.metadata} />
               <TelemetryChart title={chartMode} rows={chartRows} channels={chartChannels} currentIndex={currentIndex} metadata={telemetry?.metadata} />
             </section>
+          </div>
+        )}
+
+        {activeTab === "telemetry" && (
+          <div className="telemetry-ops-shell">
+            <section className="telemetry-ops-runbar">
+              <SelectField label="Run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
+              <SelectField label="Compare" value={compareRunId} onChange={setCompareRunId} options={runOptions.filter((run) => run.id !== selectedRunId)} />
+              <div className="telemetry-ops-runmeta">
+                <span>{runDetail?.scenario ?? "no selected run"}</span>
+                <strong>{telemetry?.sample_count ?? 0} samples</strong>
+                <span>{compareTelemetry ? `compare: ${compareRunLabel}` : "comparison optional"}</span>
+              </div>
+            </section>
+            <OperationsTelemetryPanel
+              telemetry={telemetry}
+              currentIndex={currentIndex}
+              onJumpIndex={setCurrentIndex}
+              onJumpTime={jumpToTelemetryTime}
+              metadata={telemetry?.metadata}
+              compareTelemetry={compareTelemetry}
+              compareRunLabel={compareRunLabel}
+              alarms={alarms}
+              events={runDetail?.events}
+            />
           </div>
         )}
 
