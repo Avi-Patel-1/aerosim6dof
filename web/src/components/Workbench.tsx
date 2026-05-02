@@ -31,6 +31,7 @@ import {
   getJob,
   getJobs,
   getRun,
+  getRunAlarms,
   getRuns,
   getScenario,
   getScenarios,
@@ -41,8 +42,10 @@ import {
   validateScenario,
   validateScenarioJson
 } from "../api";
-import type { ActionResult, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, TelemetryRow, TelemetrySeries } from "../types";
+import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, TelemetryRow, TelemetrySeries } from "../types";
+import { activeAlarmCount } from "../alarms";
 import { channelLabel, channelLabelWithUnit } from "../telemetry";
+import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
 import { ParameterInfoPanel } from "./ParameterInfoPanel";
 import { ReplayScene } from "./ReplayScene";
 import { TelemetryChart } from "./TelemetryChart";
@@ -265,6 +268,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [compareRunId, setCompareRunId] = useState("");
   const [runDetail, setRunDetail] = useState<RunSummary | null>(initialHandoff?.run ?? null);
   const [telemetry, setTelemetry] = useState<TelemetrySeries | null>(initialHandoff?.telemetry ?? null);
+  const [alarms, setAlarms] = useState<AlarmSummary[]>([]);
+  const [acknowledgedAlarms, setAcknowledgedAlarms] = useState<Record<string, boolean>>({});
   const [currentIndex, setCurrentIndex] = useState(initialHandoff?.index ?? 0);
   const [playing, setPlaying] = useState(initialHandoff?.playing ?? false);
   const [chartMode, setChartMode] = useState<ChartMode>("flight");
@@ -399,13 +404,16 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       setTelemetry(null);
       setCurrentIndex(0);
     }
-    Promise.all([getRun(selectedRunId), getTelemetry(selectedRunId, 3)])
-      .then(([detail, series]) => {
+    setAlarms([]);
+    setAcknowledgedAlarms({});
+    Promise.all([getRun(selectedRunId), getTelemetry(selectedRunId, 3), getRunAlarms(selectedRunId).catch(() => [])])
+      .then(([detail, series, alarmItems]) => {
         if (!mounted) {
           return;
         }
         setRunDetail(detail);
         setTelemetry(series);
+        setAlarms(alarmItems);
         if (canReuseHandoff) {
           setCurrentIndex((index) => Math.min(index, Math.max(series.history.length - 1, 0)));
         } else {
@@ -660,9 +668,37 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     setInspectedChannel((current) => (current === channel ? "" : current));
   };
 
+  const acknowledgeAlarm = (id: string) => {
+    setAcknowledgedAlarms((current) => ({ ...current, [id]: true }));
+  };
+
+  const jumpToReplayTime = (timeS: number) => {
+    const rows = telemetry?.history ?? [];
+    if (!rows.length || !Number.isFinite(timeS)) {
+      return;
+    }
+    let nearestIndex = 0;
+    let nearestDelta = Number.POSITIVE_INFINITY;
+    rows.forEach((row, index) => {
+      const value = numeric(row.time_s);
+      if (value === null) {
+        return;
+      }
+      const delta = Math.abs(value - timeS);
+      if (delta < nearestDelta) {
+        nearestDelta = delta;
+        nearestIndex = index;
+      }
+    });
+    setPlaying(false);
+    setActiveTab("replay");
+    setCurrentIndex(nearestIndex);
+  };
+
   const final = summaryFinal(runDetail);
   const currentRow = telemetry?.history[currentIndex];
   const chartRow = chartRows[Math.min(currentIndex, Math.max(chartRows.length - 1, 0))];
+  const activeAlarms = activeAlarmCount(alarms);
   const activeParameterKey = chartChannels.includes(inspectedChannel) ? inspectedChannel : chartChannels[0];
   const reportArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "report" || artifact.kind === "plot").slice(0, 8) ?? [];
   const dataArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "csv" || artifact.kind === "json").slice(0, 8) ?? [];
@@ -834,6 +870,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                   <span>Final Alt</span>
                   <strong>{formatMetric(final.altitude_m, " m", 1)}</strong>
                 </div>
+                <div>
+                  <span>Active Alarms</span>
+                  <strong>{activeAlarms}</strong>
+                </div>
               </div>
               <section className="side-section">
                 <div className="section-title">
@@ -851,6 +891,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                   <button className={showWind ? "active" : ""} onClick={() => setShowWind((value) => !value)}>Wind</button>
                 </div>
               </section>
+              <ActiveAlarmsPanel alarms={alarms} acknowledged={acknowledgedAlarms} onAcknowledge={acknowledgeAlarm} onJump={jumpToReplayTime} />
               <section className="side-section">
                 <div className="section-title">
                   <ShieldAlert size={16} />
@@ -867,6 +908,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                   {runDetail && runDetail.events.length === 0 && <div className="empty-state">No events</div>}
                 </div>
               </section>
+              <AlarmHistoryPanel alarms={alarms} acknowledged={acknowledgedAlarms} onAcknowledge={acknowledgeAlarm} onJump={jumpToReplayTime} />
             </aside>
 
             <section className="telemetry-panel wide">

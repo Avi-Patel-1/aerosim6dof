@@ -42,6 +42,10 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["load_factor_g"]["role"], "aero")
         self.assertEqual(payload["metadata"]["pitch_deg"]["group"], "Attitude")
 
+        alarms = self.client.get(f"/api/runs/{run_id}/alarms")
+        self.assertEqual(alarms.status_code, 200)
+        self.assertIsInstance(alarms.json(), list)
+
     def test_validate_and_create_web_run(self):
         from aerosim6dof.web import api
 

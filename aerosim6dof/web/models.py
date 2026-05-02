@@ -114,6 +114,24 @@ class RunSummary(BaseModel):
     artifacts: list[ArtifactRef] = Field(default_factory=list)
 
 
+class AlarmSummary(BaseModel):
+    id: str
+    name: str
+    severity: Literal["info", "caution", "warning", "critical"]
+    source: str
+    subsystem: str
+    message: str
+    channel: str | None = None
+    threshold: str = ""
+    rule: str = ""
+    first_triggered_time_s: float
+    last_triggered_time_s: float
+    cleared_time_s: float | None = None
+    active: bool
+    occurrence_count: int = 0
+    sample_count: int = 0
+
+
 class TelemetryRange(BaseModel):
     min: float | None = None
     max: float | None = None

@@ -19,6 +19,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from aerosim6dof.analysis.aero import aero_report, aero_sweep, inspect_aero
+from aerosim6dof.analysis.alarms import evaluate_run_alarms
 from aerosim6dof.analysis.compare import compare_histories
 from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, inspect_vehicle
 from aerosim6dof.analysis.environment import environment_report
@@ -39,6 +40,7 @@ from aerosim6dof.telemetry.metadata import metadata_for_channels
 from .models import (
     ActionRequest,
     ActionResult,
+    AlarmSummary,
     ArtifactRef,
     ConfigSummary,
     JobSummary,
@@ -319,6 +321,15 @@ def get_telemetry(run_id: str, stride: int = Query(1, ge=1, le=5000)) -> Telemet
         datasets[name] = rows[::stride]
         channels[name] = list(rows[0].keys()) if rows else []
     return TelemetrySeries(run_id=run_id, stride=stride, sample_count=sample_count, channels=channels, metadata=metadata_for_channels(channels), **datasets)
+
+
+@router.get("/runs/{run_id}/alarms", response_model=list[AlarmSummary])
+def get_run_alarms(run_id: str) -> list[AlarmSummary]:
+    run_dir = _run_dir_from_id(run_id)
+    try:
+        return [AlarmSummary(**alarm) for alarm in evaluate_run_alarms(run_dir)]
+    except Exception:  # pragma: no cover - alarms must not block replay loading
+        return []
 
 
 @router.get("/artifacts/{run_id}/{artifact_path:path}")

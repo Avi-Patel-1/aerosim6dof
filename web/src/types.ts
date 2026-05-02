@@ -89,6 +89,26 @@ export type JobSummary = {
 
 export type TelemetryRow = Record<string, number | string | null>;
 
+export type AlarmSeverity = "info" | "caution" | "warning" | "critical";
+
+export type AlarmSummary = {
+  id: string;
+  name: string;
+  severity: AlarmSeverity;
+  source: string;
+  subsystem: string;
+  message: string;
+  channel: string | null;
+  threshold: string;
+  rule: string;
+  first_triggered_time_s: number;
+  last_triggered_time_s: number;
+  cleared_time_s: number | null;
+  active: boolean;
+  occurrence_count: number;
+  sample_count: number;
+};
+
 export type TelemetryRange = {
   min: number | null;
   max: number | null;
