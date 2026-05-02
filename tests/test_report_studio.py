@@ -42,6 +42,7 @@ class ReportStudioPacketTests(unittest.TestCase):
             telemetry = {item["id"]: item for item in packet["telemetry_highlights"]["items"]}
             channel_ids = {item["id"] for item in packet["telemetry_highlights"]["available_channels"]}
             self.assertIn("history.altitude_m", channel_ids)
+            self.assertIn("history.missile_speed_mps", channel_ids)
             self.assertIn("controls.throttle", channel_ids)
             self.assertIn("history.altitude_m", packet["telemetry_highlights"]["selected_channels"])
             self.assertEqual(telemetry["history.altitude_m"]["max"]["value"], 120.0)
@@ -177,6 +178,9 @@ class ReportStudioPacketTests(unittest.TestCase):
                     "target_range_m": 40.0,
                     "interceptor_range_m": 55.0,
                     "interceptor_fuzed": 0.0,
+                    "missile_speed_mps": 110.0,
+                    "missile_motor_spool_fraction": 0.0,
+                    "missile_fuze_status": "safe",
                     "thrust_n": 100.0,
                     "mass_kg": 10.0,
                 },
@@ -189,6 +193,9 @@ class ReportStudioPacketTests(unittest.TestCase):
                     "target_range_m": 18.0,
                     "interceptor_range_m": 22.0,
                     "interceptor_fuzed": 0.0,
+                    "missile_speed_mps": 180.0,
+                    "missile_motor_spool_fraction": 1.0,
+                    "missile_fuze_status": "armed",
                     "thrust_n": 80.0,
                     "mass_kg": 9.7,
                 },
@@ -201,6 +208,9 @@ class ReportStudioPacketTests(unittest.TestCase):
                     "target_range_m": 8.0,
                     "interceptor_range_m": 9.0,
                     "interceptor_fuzed": 1.0,
+                    "missile_speed_mps": 205.0,
+                    "missile_motor_spool_fraction": 1.0,
+                    "missile_fuze_status": "proximity",
                     "thrust_n": 0.0,
                     "mass_kg": 9.5,
                 },

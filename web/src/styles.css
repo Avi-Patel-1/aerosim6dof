@@ -2251,17 +2251,21 @@ textarea {
 }
 
 .scenario-builder-v2-tabs {
+  display: flex;
+  flex-wrap: wrap;
   justify-content: flex-start;
-  overflow-x: auto;
+  overflow: visible;
   padding: 5px;
   scrollbar-width: thin;
 }
 
 .scenario-builder-v2-tabs button {
-  flex: 0 0 auto;
+  flex: 1 1 min(150px, 100%);
   min-height: 38px;
   padding: 0 13px;
   font-size: 0.86rem;
+  white-space: normal;
+  text-align: center;
 }
 
 .scenario-builder-v2-grid {
@@ -2303,6 +2307,10 @@ textarea {
   align-items: start;
 }
 
+.scenario-builder-v2-engagement-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+}
+
 .scenario-builder-v2-card {
   min-width: 0;
   grid-template-columns: 1fr;
@@ -2310,6 +2318,7 @@ textarea {
   border-radius: 8px;
   background: linear-gradient(180deg, rgba(205, 221, 255, 0.08), rgba(23, 23, 33, 0.26));
   padding: 16px;
+  overflow: hidden;
 }
 
 .scenario-builder-v2-card .section-row {
@@ -2318,6 +2327,12 @@ textarea {
 
 .scenario-builder-v2-card > * {
   min-width: 0;
+}
+
+.scenario-builder-v2-card .section-row strong,
+.scenario-builder-v2-card .field span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .scenario-builder-v2-hint {
@@ -2398,20 +2413,21 @@ textarea {
 
 /* Reports */
 .reports-layout {
-  grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .report-panel:first-child {
-  grid-row: span 2;
+  grid-row: auto;
 }
 
 .report-studio-panel {
+  grid-column: 1 / -1;
   min-width: 0;
 }
 
 .report-studio {
   display: grid;
-  gap: 18px;
+  gap: 22px;
 }
 
 .report-studio-header,
@@ -2473,9 +2489,9 @@ textarea {
 
 .report-studio-grid {
   display: grid;
-  grid-template-columns: minmax(min(230px, 100%), 0.55fr) minmax(min(280px, 100%), 0.75fr) minmax(min(260px, 100%), 0.7fr);
-  gap: 18px;
-  align-items: stretch;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 20px;
+  align-items: start;
 }
 
 .report-studio-section-picker,
@@ -2493,6 +2509,17 @@ textarea {
   display: grid;
   gap: 10px;
   align-content: start;
+}
+
+.report-studio-section-picker {
+  max-height: min(760px, calc(100vh - 190px));
+  overflow: auto;
+}
+
+.report-studio-section-list {
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .report-studio-section {
@@ -2543,6 +2570,12 @@ textarea {
   padding-bottom: 12px;
 }
 
+.report-studio-channel-picker {
+  max-height: 360px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .report-studio-card.muted {
   opacity: 0.62;
 }
@@ -2575,7 +2608,9 @@ textarea {
 }
 
 .report-studio-payload pre {
-  max-height: 360px;
+  min-height: 360px;
+  max-height: 560px;
+  white-space: pre;
 }
 
 .result-head {
@@ -2724,6 +2759,16 @@ pre {
     grid-template-columns: 1fr;
   }
 
+  .report-studio-panel {
+    grid-column: auto;
+  }
+
+  .report-studio-section-picker,
+  .report-studio-section-list,
+  .report-studio-channel-picker {
+    max-height: none;
+  }
+
   .replay-side {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2759,6 +2804,11 @@ pre {
   .report-studio-actions,
   .operations-telemetry-actions {
     justify-content: flex-start;
+  }
+
+  .report-studio-actions select,
+  .report-studio-actions button {
+    flex: 1 1 min(180px, 100%);
   }
 }
 

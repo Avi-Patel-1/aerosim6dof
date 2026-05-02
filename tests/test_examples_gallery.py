@@ -48,6 +48,19 @@ class ExamplesGalleryTests(unittest.TestCase):
                     "interceptors": [{"id": "interceptor", "target_id": "target"}],
                 },
             )
+            write_json(
+                scenarios / "missile_crossing_showcase.json",
+                {
+                    "name": "missile_crossing_showcase",
+                    "duration": 9.0,
+                    "dt": 0.02,
+                    "initial": {"position_m": [0.0, 0.0, 900.0]},
+                    "guidance": {"mode": "target_intercept"},
+                    "targets": [{"id": "target"}],
+                    "interceptors": [{"id": "missile", "target_id": "target", "dynamics_model": "missile_dynamics_v1"}],
+                    "missile": {"model": "missile_dynamics_v1"},
+                },
+            )
 
             cards = self.cards_by_id(examples_root)
 
@@ -67,6 +80,8 @@ class ExamplesGalleryTests(unittest.TestCase):
         self.assertEqual(cards["target_intercept"]["category"], "Engagement")
         self.assertIn("intercept", cards["target_intercept"]["tags"])
         self.assertIn("target_distance_m", cards["target_intercept"]["primary_metrics"])
+        self.assertEqual(cards["missile_crossing_showcase"]["title"], "Missile Crossing Showcase")
+        self.assertIn("missile_lateral_accel_mps2", cards["missile_crossing_showcase"]["primary_metrics"])
 
     def test_invalid_json_becomes_non_runnable_fallback_card(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

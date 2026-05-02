@@ -1,0 +1,81 @@
+{
+  "name": "missile_tail_chase_showcase",
+  "dt": 0.02,
+  "duration": 11.0,
+  "integrator": "semi_implicit_euler",
+  "vehicle_config": "../vehicles/baseline.json",
+  "environment_config": "../environments/calm.json",
+  "initial": {
+    "position_m": [0.0, 30.0, 820.0],
+    "velocity_mps": [86.0, 0.0, 5.0],
+    "euler_deg": [0.0, 3.0, 0.0],
+    "body_rates_dps": [0.0, 0.0, 0.0]
+  },
+  "guidance": {
+    "mode": "target_intercept",
+    "target_position_m": [760.0, 50.0, 900.0],
+    "throttle": 0.84
+  },
+  "targets": [
+    {
+      "id": "tail_chase_target",
+      "label": "Tail-chase target",
+      "role": "primary",
+      "initial_position_m": [760.0, 50.0, 900.0],
+      "velocity_mps": [72.0, 0.0, 0.0]
+    }
+  ],
+  "interceptors": [
+    {
+      "id": "tail_chase_missile",
+      "target_id": "tail_chase_target",
+      "launch_time_s": 0.6,
+      "initial_position_m": [70.0, 30.0, 825.0],
+      "initial_velocity_mps": [145.0, 0.0, 8.0],
+      "max_speed_mps": 500.0,
+      "max_accel_mps2": 120.0,
+      "guidance_gain": 2.5,
+      "proximity_fuze_m": 14.0,
+      "dynamics_model": "missile_dynamics_v1"
+    }
+  ],
+  "missile": {
+    "model": "missile_dynamics_v1",
+    "dry_mass_kg": 44.0,
+    "initial_mass_kg": 62.0,
+    "seeker": {
+      "min_range_m": 4.0,
+      "max_range_m": 4200.0,
+      "field_of_view_deg": 120.0
+    },
+    "guidance": {
+      "navigation_constant": 3.4,
+      "max_accel_mps2": 120.0,
+      "require_valid_measurement": true
+    },
+    "motor": {
+      "max_thrust_n": 4300.0,
+      "burn_time_s": 4.4,
+      "spool_time_s": 0.25,
+      "isp_s": 225.0,
+      "thrust_profile": [[0.0, 0.55], [0.6, 1.0], [3.7, 0.88], [4.4, 0.25]]
+    },
+    "actuator": {
+      "max_accel_mps2": 120.0,
+      "rate_limit_mps3": 820.0
+    },
+    "fuze": {
+      "arming_time_s": 0.4,
+      "proximity_radius_m": 14.0,
+      "self_destruct_time_s": 10.0
+    }
+  },
+  "events": {
+    "target_threshold_m": 70.0,
+    "qbar_limit_pa": 90000.0,
+    "load_limit_g": 14.0
+  },
+  "sensors": {
+    "seed": 232
+  }
+}

@@ -217,7 +217,7 @@ export function ReportStudio({
             </button>
           ))}
           {availableTelemetryChannels.length > 0 && activeSections.includes("telemetry") ? (
-            <div className="report-studio-card">
+            <div className="report-studio-card report-studio-channel-picker">
               <div>
                 <span>channels</span>
                 <strong>Telemetry Selection</strong>

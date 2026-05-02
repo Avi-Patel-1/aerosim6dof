@@ -72,6 +72,14 @@ class MissileRuntimeIntegrationTests(unittest.TestCase):
         self.assertGreater(rows[0]["missile_motor_mass_flow_kgps"], 0.0)
         self.assertGreater(rows[0]["missile_closing_speed_mps"], 0.0)
         self.assertIn("missile_lateral_accel_mps2", rows[0])
+        self.assertGreater(rows[0]["missile_speed_mps"], 0.0)
+        self.assertGreater(rows[0]["missile_mass_kg"], 0.0)
+        self.assertGreater(rows[0]["missile_seeker_range_m"], 0.0)
+        self.assertEqual(rows[0]["missile_seeker_status"], "valid")
+        self.assertEqual(rows[0]["missile_guidance_valid"], 1.0)
+        self.assertEqual(rows[0]["missile_motor_spool_fraction"], 1.0)
+        self.assertEqual(rows[0]["missile_motor_phase"], "boost")
+        self.assertIn("missile_fuze_status", rows[0])
         self.assertEqual(state["missile_mode"], 1.0)
 
     def test_missile_mode_closes_range_over_tiny_target_sequence(self):

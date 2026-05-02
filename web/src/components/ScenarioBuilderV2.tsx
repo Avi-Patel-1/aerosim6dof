@@ -724,7 +724,7 @@ export function ScenarioBuilderV2({
               Add Interceptor
             </button>
           </div>
-          <div className="builder-card-grid scenario-builder-v2-card-grid">
+          <div className="builder-card-grid scenario-builder-v2-card-grid scenario-builder-v2-engagement-grid">
             {targets.map((target, index) => (
               <div className="builder-card scenario-builder-v2-card" key={`${asString(target.id, "target")}-${index}`}>
                 <div className="section-row">

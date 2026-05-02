@@ -363,28 +363,56 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 def _missile_row_defaults(interceptor: InterceptorObject) -> dict[str, Any]:
     return {
         "missile_mode": 1.0,
+        "missile_speed_mps": float("nan"),
+        "missile_mass_kg": float("nan"),
+        "missile_accel_mps2": 0.0,
         "seeker_valid": 0.0,
+        "missile_seeker_status": "",
+        "missile_seeker_range_m": float("nan"),
+        "missile_seeker_aspect_deg": float("nan"),
+        "missile_guidance_valid": 0.0,
+        "missile_guidance_status": "",
         "missile_motor_thrust_n": 0.0,
         "missile_motor_mass_flow_kgps": 0.0,
+        "missile_motor_spool_fraction": 0.0,
+        "missile_motor_phase": "",
         "missile_commanded_accel_mps2": 0.0,
         "missile_lateral_accel_mps2": 0.0,
+        "missile_control_rate_limited": 0.0,
+        "missile_control_saturated": 0.0,
         "missile_closing_speed_mps": float("nan"),
         "missile_fuze_armed": 0.0,
         "missile_fuzed": 1.0 if interceptor.fuzed else 0.0,
+        "missile_fuze_status": "",
+        "missile_fuze_closest_range_m": float("nan"),
     }
 
 
 def _missile_row_telemetry(telemetry: dict[str, Any]) -> dict[str, Any]:
     return {
         "missile_mode": 1.0,
+        "missile_speed_mps": _finite(telemetry.get("missile_speed_mps"), float("nan")),
+        "missile_mass_kg": _finite(telemetry.get("missile_mass_kg"), float("nan")),
+        "missile_accel_mps2": _finite(telemetry.get("missile_accel_mps2"), 0.0),
         "seeker_valid": _float_flag(telemetry.get("seeker_valid")),
+        "missile_seeker_status": str(telemetry.get("seeker_status", "")),
+        "missile_seeker_range_m": _finite(telemetry.get("seeker_range_m"), float("nan")),
+        "missile_seeker_aspect_deg": _finite(telemetry.get("seeker_aspect_deg"), float("nan")),
+        "missile_guidance_valid": _float_flag(telemetry.get("guidance_valid")),
+        "missile_guidance_status": str(telemetry.get("guidance_status", "")),
         "missile_motor_thrust_n": _finite(telemetry.get("motor_thrust_n"), 0.0),
         "missile_motor_mass_flow_kgps": _finite(telemetry.get("motor_mass_flow_kgps"), 0.0),
+        "missile_motor_spool_fraction": _finite(telemetry.get("motor_spool_fraction"), 0.0),
+        "missile_motor_phase": str(telemetry.get("motor_phase", "")),
         "missile_commanded_accel_mps2": _finite(telemetry.get("guidance_accel_cmd_mps2"), 0.0),
         "missile_lateral_accel_mps2": _finite(telemetry.get("control_accel_mps2"), 0.0),
+        "missile_control_rate_limited": _float_flag(telemetry.get("control_rate_limited")),
+        "missile_control_saturated": _float_flag(telemetry.get("control_saturated")),
         "missile_closing_speed_mps": _finite(telemetry.get("seeker_closing_speed_mps"), float("nan")),
         "missile_fuze_armed": _float_flag(telemetry.get("fuze_armed")),
         "missile_fuzed": _float_flag(telemetry.get("fuze_fuzed")),
+        "missile_fuze_status": str(telemetry.get("fuze_status", "")),
+        "missile_fuze_closest_range_m": _finite(telemetry.get("fuze_closest_range_m"), float("nan")),
     }
 
 

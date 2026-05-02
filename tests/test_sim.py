@@ -1,3 +1,4 @@
+import csv
 import json
 import math
 import subprocess
@@ -384,6 +385,34 @@ class FlightSimTests(unittest.TestCase):
             self.assertEqual(engagement["target_count"], 2)
             self.assertEqual(engagement["interceptor_count"], 1)
             self.assertTrue((out / "engagement_report.html").exists())
+
+    def test_missile_showcase_scenarios_emit_visible_missile_telemetry(self):
+        for scenario_id in ("missile_head_on_showcase", "missile_crossing_showcase", "missile_tail_chase_showcase"):
+            scenario = Scenario.from_file(ROOT / "examples/scenarios" / f"{scenario_id}.json")
+            with self.subTest(scenario=scenario_id), tempfile.TemporaryDirectory() as tmp:
+                summary = run_scenario(scenario, tmp)
+                out = Path(tmp)
+                history_header = (out / "history.csv").read_text().splitlines()[0]
+                interceptor_header = (out / "interceptors.csv").read_text().splitlines()[0]
+                for channel in (
+                    "missile_speed_mps",
+                    "missile_seeker_range_m",
+                    "missile_motor_phase",
+                    "missile_motor_spool_fraction",
+                    "missile_fuze_status",
+                ):
+                    self.assertIn(channel, history_header)
+                    self.assertIn(channel, interceptor_header)
+                with (out / "history.csv").open(encoding="utf-8") as history_file:
+                    history_rows = list(csv.DictReader(history_file))
+                self.assertTrue(any(row["missile_motor_phase"] == "boost" for row in history_rows))
+                self.assertTrue(any(float(row["missile_motor_spool_fraction"]) > 0.0 for row in history_rows))
+                self.assertTrue(any(row["missile_fuze_status"] == "proximity" for row in history_rows))
+                events = json.loads((out / "events.json").read_text())
+                self.assertTrue(any(event["type"] == "interceptor_launch" for event in events))
+                self.assertTrue(any(event["type"] == "interceptor_fuze" for event in events))
+                self.assertLess(float(summary["min_interceptor_range_m"]), 15.0)
+                self.assertGreaterEqual(int(summary["interceptor_fuze_count"]), 1)
 
     def test_compare_trim_and_linearize(self):
         scenario = Scenario.from_file(ROOT / "examples/scenarios/nominal_ascent.json")
