@@ -607,9 +607,11 @@ def _find_run_dirs() -> list[Path]:
     if not OUTPUTS_DIR.exists():
         return []
     run_dirs = []
+    seed_suite_ready = _seed_suite_ready()
+    minimum_seed_dir = (WEB_RUNS_DIR / "nominal_ascent_seed").resolve()
     for summary_path in OUTPUTS_DIR.rglob("summary.json"):
         run_dir = summary_path.parent
-        if _seed_suite_ready() and run_dir.resolve() == (WEB_RUNS_DIR / "nominal_ascent_seed").resolve():
+        if seed_suite_ready and run_dir.resolve() == minimum_seed_dir:
             continue
         if (run_dir / "history.csv").exists():
             run_dirs.append(run_dir)
@@ -645,7 +647,7 @@ def _seed_suite_worker(scenarios_dir: Path, seed_dir: Path) -> None:
     try:
         result = batch_run(scenarios_dir, seed_dir)
         write_json(seed_dir / ".seed_complete.json", {"generated_at_utc": _utc_now(), "scenario_count": result.get("count", 0)})
-    except (OSError, ValueError):
+    except Exception:  # pragma: no cover - defensive reset for background worker failures
         with SEED_LOCK:
             SEED_SUITE_STARTED = False
 

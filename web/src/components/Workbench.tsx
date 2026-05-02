@@ -93,6 +93,19 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+function preferredRun(items: RunSummary[], preferredId?: string): RunSummary | undefined {
+  return (
+    items.find((run) => run.id === preferredId) ??
+    items.find((run) => run.scenario === "nominal_ascent") ??
+    items.find((run) => run.id.startsWith("web_runs~")) ??
+    items[0]
+  );
+}
+
+function compareRun(items: RunSummary[], selectedId?: string): string {
+  return items.find((run) => run.id !== selectedId)?.id ?? selectedId ?? "";
+}
+
 function parseDraft(text: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(text);
@@ -291,10 +304,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       return;
     }
     if (!selectedRunId && items[0]) {
-      setSelectedRunId(items.find((run) => run.id.startsWith("web_runs~"))?.id ?? items[0].id);
+      setSelectedRunId(preferredRun(items)?.id ?? "");
     }
-    if (!compareRunId && items[1]) {
-      setCompareRunId(items[1].id);
+    if (!compareRunId && items[0]) {
+      setCompareRunId(compareRun(items, selectedRunId || preferredRun(items)?.id));
     }
   };
 
@@ -315,9 +328,9 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         setSelectedVehicle(vehicleItems.find((item) => item.id === "baseline")?.id ?? vehicleItems[0]?.id ?? "");
         setSecondVehicle(vehicleItems.find((item) => item.id === "electric_uav")?.id ?? vehicleItems[1]?.id ?? vehicleItems[0]?.id ?? "");
         setSelectedEnvironment(environmentItems[0]?.id ?? "");
-        const preferred = runItems.find((run) => run.id === initialHandoff?.runId) ?? runItems.find((run) => run.id.startsWith("web_runs~")) ?? runItems.find((run) => run.scenario === "nominal_ascent") ?? runItems[0];
+        const preferred = preferredRun(runItems, initialHandoff?.runId);
         setSelectedRunId(preferred?.id ?? "");
-        setCompareRunId(runItems.find((run) => run.id !== preferred?.id)?.id ?? preferred?.id ?? "");
+        setCompareRunId(compareRun(runItems, preferred?.id));
       })
       .catch((error: Error) => setMessage(error.message));
     return () => {
@@ -344,6 +357,34 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       mounted = false;
     };
   }, [selectedScenario]);
+
+  useEffect(() => {
+    if (!scenarios.length || runs.length >= scenarios.length) {
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setInterval(() => {
+      getRuns()
+        .then((items) => {
+          if (cancelled) {
+            return;
+          }
+          setRuns(items);
+          const selected = selectedRunId || preferredRun(items)?.id || "";
+          if (!selectedRunId && selected) {
+            setSelectedRunId(selected);
+          }
+          if (!compareRunId && items.length) {
+            setCompareRunId(compareRun(items, selected));
+          }
+        })
+        .catch(() => undefined);
+    }, 4500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [compareRunId, runs.length, scenarios.length, selectedRunId]);
 
   useEffect(() => {
     if (!selectedRunId) {

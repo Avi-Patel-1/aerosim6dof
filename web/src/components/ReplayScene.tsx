@@ -29,6 +29,21 @@ type SceneState = {
 
 const GROUND_Y = -10.28;
 
+function disposeScene(scene: THREE.Scene) {
+  scene.traverse((object) => {
+    const mesh = object as THREE.Object3D & {
+      geometry?: THREE.BufferGeometry;
+      material?: THREE.Material | THREE.Material[];
+    };
+    mesh.geometry?.dispose();
+    if (Array.isArray(mesh.material)) {
+      mesh.material.forEach((material) => material.dispose());
+    } else {
+      mesh.material?.dispose();
+    }
+  });
+}
+
 function numberValue(row: TelemetryRow | undefined, key: string): number {
   const value = row?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
@@ -282,8 +297,10 @@ export function ReplayScene({ rows, currentIndex, environmentMode, cameraMode, s
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
-      renderer.setSize(rect.width, rect.height, false);
-      camera.aspect = rect.width / Math.max(rect.height, 1);
+      const width = Math.max(rect.width, 1);
+      const height = Math.max(rect.height, 1);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
     };
     const animate = () => {
@@ -297,6 +314,7 @@ export function ReplayScene({ rows, currentIndex, environmentMode, cameraMode, s
     return () => {
       window.removeEventListener("resize", resize);
       window.cancelAnimationFrame(stateRef.current?.frame ?? 0);
+      disposeScene(scene);
       renderer.dispose();
       stateRef.current = null;
     };
