@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -23,7 +24,7 @@ class EventDetector:
         self.saturation_seen: set[str] = set()
         self.target_seen = False
 
-    def update(self, row: dict[str, Any], controls: dict[str, Any], above_ground_m: float) -> bool:
+    def update(self, row: dict[str, Any], controls: dict[str, Any], above_ground_m: float, contact: dict[str, Any] | None = None) -> bool:
         t = float(row["time_s"])
         alt = float(row["altitude_m"])
         if alt > self.max_altitude_m:
@@ -56,15 +57,33 @@ class EventDetector:
             self._add(t, "target_crossing", f"Target distance fell below {threshold:.1f} m.")
             self.target_seen = True
         if above_ground_m <= 0.0 and t > 0.0 and not self.ground_seen:
-            self._add(t, "ground_impact", "Vehicle intersected the terrain model.")
+            contact_data = contact or {}
+            state = str(contact_data.get("ground_contact_state", "impact"))
+            impact_speed = _finite(contact_data.get("impact_speed_mps"), max(0.0, -float(row.get("vz_mps", 0.0))))
+            agl_rate = _finite(contact_data.get("altitude_agl_rate_mps"), float(row.get("vz_mps", 0.0)))
+            self._add(
+                t,
+                "ground_impact",
+                f"Vehicle contacted terrain: {state} at {impact_speed:.2f} m/s sink rate.",
+                classification=state,
+                impact_speed_mps=impact_speed,
+                altitude_agl_rate_mps=agl_rate,
+            )
             self.ground_seen = True
-            return True
+            return bool(contact_data.get("ground_contact_stop", True))
         return False
 
     def finalize(self) -> list[dict[str, Any]]:
         self._add(self.max_altitude_time_s, "max_altitude", f"Maximum altitude was {self.max_altitude_m:.2f} m.")
         return sorted(self.events, key=lambda e: float(e["time_s"]))
 
-    def _add(self, t: float, event_type: str, description: str) -> None:
-        self.events.append({"time_s": float(t), "type": event_type, "description": description})
+    def _add(self, t: float, event_type: str, description: str, **extra: Any) -> None:
+        self.events.append({"time_s": float(t), "type": event_type, "description": description, **extra})
 
+
+def _finite(value: Any, default: float) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if math.isfinite(number) else default

@@ -27,6 +27,8 @@ from aerosim6dof.scenario import Scenario
 from aerosim6dof.sensors.sensor_suite import SensorSuite
 from aerosim6dof.sim import RateLimitedActuator, run_scenario
 from aerosim6dof.simulation.campaign import run_sweep_campaign
+from aerosim6dof.simulation.contact import GroundContactModel
+from aerosim6dof.simulation.events import EventDetector
 from aerosim6dof.simulation.fault_campaign import run_fault_campaign
 from aerosim6dof.simulation.runner import batch_run, linearize_scenario, monte_carlo_run, report_run
 from aerosim6dof.reports.svg import write_time_plot
@@ -34,6 +36,7 @@ from aerosim6dof.vehicle.actuators import SurfaceActuator
 from aerosim6dof.vehicle.aerodynamics import AerodynamicModel
 from aerosim6dof.vehicle.geometry import ReferenceGeometry
 from aerosim6dof.vehicle.propulsion import PropulsionModel
+from aerosim6dof.vehicle.state import VehicleState
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -60,6 +63,10 @@ class FlightSimTests(unittest.TestCase):
         position = np.array([100.0, 10.0, 50.0])
         self.assertAlmostEqual(plane.elevation(position), 5.8)
         self.assertAlmostEqual(plane.query(position)["altitude_agl_m"], 44.2)
+        moving = plane.query(position, np.array([10.0, 0.0, -5.0]))
+        self.assertAlmostEqual(moving["terrain_slope_x"], 0.01)
+        self.assertAlmostEqual(moving["terrain_rate_mps"], 0.1)
+        self.assertAlmostEqual(moving["altitude_agl_rate_mps"], -5.1)
 
         grid = TerrainModel(
             {
@@ -87,6 +94,45 @@ class FlightSimTests(unittest.TestCase):
         self.assertEqual(malformed.elevation(np.array([0.0, 0.0, 10.0])), 0.0)
         disabled = TerrainModel({"enabled": "false", "base_altitude_m": 500.0})
         self.assertEqual(disabled.elevation(np.array([0.0, 0.0, 10.0])), 0.0)
+
+    def test_ground_contact_classification_and_response(self):
+        terrain = TerrainModel()
+        contact = GroundContactModel({"enabled": True, "mode": "bounce", "stop_on_contact": False, "friction": 0.25})
+        state = VehicleState(
+            position_m=np.array([0.0, 0.0, -0.5]),
+            velocity_mps=np.array([10.0, 0.0, -4.0]),
+            quaternion=np.array([1.0, 0.0, 0.0, 0.0]),
+            rates_rps=np.zeros(3),
+            mass_kg=10.0,
+        )
+        contact_state = contact.evaluate(terrain.query(state.position_m, state.velocity_mps))
+        self.assertEqual(contact_state["ground_contact_state"], "impact")
+        self.assertEqual(contact_state["ground_contact_severity"], 2.0)
+        self.assertFalse(contact_state["ground_contact_stop"])
+
+        adjusted, action = contact.apply(state, terrain)
+        self.assertEqual(action["ground_contact_action"], "bounce")
+        self.assertGreaterEqual(adjusted.position_m[2], 0.0)
+        self.assertGreater(adjusted.velocity_mps[2], 0.0)
+        self.assertLess(abs(float(adjusted.velocity_mps[0])), 10.0)
+
+    def test_ground_contact_event_carries_classification(self):
+        detector = EventDetector()
+        stop = detector.update(
+            {"time_s": 1.0, "altitude_m": -0.2, "vz_mps": -1.2},
+            {},
+            -0.2,
+            {
+                "ground_contact_state": "touchdown",
+                "impact_speed_mps": 1.2,
+                "altitude_agl_rate_mps": -1.2,
+                "ground_contact_stop": False,
+            },
+        )
+        self.assertFalse(stop)
+        ground = next(event for event in detector.finalize() if event["type"] == "ground_impact")
+        self.assertEqual(ground["classification"], "touchdown")
+        self.assertAlmostEqual(ground["impact_speed_mps"], 1.2)
 
     def test_integrators(self):
         def fn(_t, y):
@@ -242,9 +288,13 @@ class FlightSimTests(unittest.TestCase):
             data = json.loads((out / "summary.json").read_text())
             self.assertIn("max_speed_mps", data)
             self.assertIn("min_altitude_agl_m", data)
+            self.assertIn("max_impact_speed_mps", data)
             history_header = (out / "history.csv").read_text().splitlines()[0]
             self.assertIn("altitude_agl_m", history_header)
             self.assertIn("terrain_elevation_m", history_header)
+            self.assertIn("altitude_agl_rate_mps", history_header)
+            self.assertIn("ground_contact", history_header)
+            self.assertIn("impact_speed_mps", history_header)
             manifest = json.loads((out / "manifest.json").read_text())
             self.assertEqual(manifest["scenario"], "nominal_ascent")
 

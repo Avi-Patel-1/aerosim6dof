@@ -22,5 +22,16 @@
         "half_width_m": 220.0
       }
     ]
+  },
+  "ground_contact": {
+    "enabled": false,
+    "mode": "terminate",
+    "stop_on_contact": true,
+    "stop_on_crash": true,
+    "touchdown_speed_mps": 2.0,
+    "impact_speed_mps": 8.0,
+    "crash_speed_mps": 25.0,
+    "restitution": 0.18,
+    "friction": 0.35
   }
 }

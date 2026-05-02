@@ -52,9 +52,40 @@ class TerrainModel:
     def above_ground(self, position_m: np.ndarray) -> float:
         return float(position_m[2]) - self.elevation(position_m)
 
-    def query(self, position_m: np.ndarray) -> dict[str, float]:
+    def gradient(self, position_m: np.ndarray, step_m: float = 1.0) -> tuple[float, float]:
+        """Return terrain height gradients dZ/dX and dZ/dY at a position."""
+        if not self.enabled:
+            return 0.0, 0.0
+        step = max(float(step_m), 1e-3)
+        x_forward = np.array(position_m, dtype=float)
+        x_back = np.array(position_m, dtype=float)
+        y_forward = np.array(position_m, dtype=float)
+        y_back = np.array(position_m, dtype=float)
+        x_forward[0] += step
+        x_back[0] -= step
+        y_forward[1] += step
+        y_back[1] -= step
+        dz_dx = (self.elevation(x_forward) - self.elevation(x_back)) / (2.0 * step)
+        dz_dy = (self.elevation(y_forward) - self.elevation(y_back)) / (2.0 * step)
+        return float(dz_dx), float(dz_dy)
+
+    def query(self, position_m: np.ndarray, velocity_mps: np.ndarray | None = None) -> dict[str, float]:
         elevation = self.elevation(position_m)
-        return {"terrain_elevation_m": elevation, "altitude_agl_m": float(position_m[2]) - elevation}
+        slope_x, slope_y = self.gradient(position_m)
+        terrain_rate = 0.0
+        agl_rate = float("nan")
+        if velocity_mps is not None:
+            terrain_rate = slope_x * float(velocity_mps[0]) + slope_y * float(velocity_mps[1])
+            agl_rate = float(velocity_mps[2]) - terrain_rate
+        return {
+            "terrain_elevation_m": elevation,
+            "altitude_agl_m": float(position_m[2]) - elevation,
+            "terrain_slope_x": slope_x,
+            "terrain_slope_y": slope_y,
+            "terrain_slope_deg": math.degrees(math.atan((slope_x * slope_x + slope_y * slope_y) ** 0.5)),
+            "terrain_rate_mps": float(terrain_rate),
+            "altitude_agl_rate_mps": agl_rate,
+        }
 
     def _grid_elevation(self, x: float, y: float) -> float | None:
         if self.grid_x is None or self.grid_y is None or self.grid_z is None:

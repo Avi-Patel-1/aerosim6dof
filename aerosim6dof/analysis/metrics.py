@@ -22,11 +22,16 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
             "altitude_m": float(final["altitude_m"]),
             "altitude_agl_m": _finite_float(final.get("altitude_agl_m")),
             "terrain_elevation_m": _finite_float(final.get("terrain_elevation_m")),
+            "ground_contact_state": final.get("ground_contact_state"),
+            "ground_contact_severity": _finite_float(final.get("ground_contact_severity")),
             "speed_mps": float(final["speed_mps"]),
             "mass_kg": float(final["mass_kg"]),
         },
         "max_altitude_m": max(float(r["altitude_m"]) for r in rows),
         "min_altitude_agl_m": _finite_min([r.get("altitude_agl_m") for r in rows]),
+        "min_altitude_agl_rate_mps": _finite_min([r.get("altitude_agl_rate_mps") for r in rows]),
+        "max_impact_speed_mps": _finite_max([r.get("impact_speed_mps") for r in rows]),
+        "ground_contact_count": sum(1 for r in rows if _finite_float(r.get("ground_contact")) == 1.0),
         "max_speed_mps": max(float(r["speed_mps"]) for r in rows),
         "max_load_factor_g": max(float(r["load_factor_g"]) for r in rows),
         "max_qbar_pa": max(float(r["qbar_pa"]) for r in rows),
@@ -40,6 +45,11 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
 def _finite_min(values: list[Any]) -> float | None:
     finite = [float(v) for v in values if isinstance(v, (int, float)) and np.isfinite(v)]
     return min(finite) if finite else None
+
+
+def _finite_max(values: list[Any]) -> float | None:
+    finite = [float(v) for v in values if isinstance(v, (int, float)) and np.isfinite(v)]
+    return max(finite) if finite else None
 
 
 def _finite_float(value: Any) -> float | None:

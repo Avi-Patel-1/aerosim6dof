@@ -34,6 +34,7 @@ from aerosim6dof.vehicle.mass_properties import MassProperties
 from aerosim6dof.vehicle.propulsion import PropulsionModel
 from aerosim6dof.vehicle.state import VehicleState
 
+from .contact import GroundContactModel, ground_contact_config
 from .dynamics import DynamicsModel
 from .events import EventDetector
 from .logger import build_rows
@@ -47,6 +48,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     state = _initial_state(scenario, components["mass_properties"])
     wind_model: WindModel = components["wind"]
     terrain: TerrainModel = components["terrain"]
+    contact_model: GroundContactModel = components["contact"]
     dynamics: DynamicsModel = components["dynamics"]
     guidance_model: GuidanceModel = components["guidance"]
     autopilot: Autopilot = components["autopilot"]
@@ -62,7 +64,8 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     steps = int(math.floor(scenario.duration / scenario.dt)) + 1
     for step in range(steps):
         t = step * scenario.dt
-        terrain_state = terrain.query(state.position_m)
+        terrain_state = terrain.query(state.position_m, state.velocity_mps)
+        contact_state = contact_model.evaluate(terrain_state)
         wind_sample = wind_model.sample(t, state.position_m, float(np.linalg.norm(state.velocity_mps)), scenario.dt)
         pre_eval = dynamics.evaluate(t, state, controls_eff, wind_sample.velocity_mps)
         nav = navigation.estimate(state, sensors.last_values)
@@ -98,15 +101,17 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
             sensor_values,
             terrain_elevation_m=terrain_state["terrain_elevation_m"],
             altitude_agl_m=terrain_state["altitude_agl_m"],
+            contact_state=contact_state,
         )
         history_rows.append(history)
         truth_rows.append(truth)
         control_rows.append(controls)
         sensor_rows.append(sensor_row)
-        stop = detector.update(history, controls, terrain_state["altitude_agl_m"])
+        stop = detector.update(history, controls, terrain_state["altitude_agl_m"], contact_state)
         if stop or step == steps - 1:
             break
         state = _advance_state(scenario.integrator, dynamics, state, controls_eff, wind_sample.velocity_mps, t, scenario.dt)
+        state, _contact_action = contact_model.apply(state, terrain)
         if terrain.above_ground(state.position_m) < -50.0:
             break
     events = detector.finalize()
@@ -242,6 +247,7 @@ def _build_components(scenario: Scenario) -> dict[str, Any]:
         "dynamics": DynamicsModel(aero, propulsion, mass, geometry),
         "wind": WindModel(scenario.wind, seed=int(scenario.sensors.get("seed", 7)) + 101),
         "terrain": TerrainModel(scenario.environment.get("terrain", {})),
+        "contact": GroundContactModel(ground_contact_config(scenario)),
         "guidance": GuidanceModel(scenario.guidance),
         "autopilot": Autopilot({**scenario.guidance.get("autopilot", {}), **scenario.autopilot}),
         "navigation": NavigationHook(str(scenario.guidance.get("navigation", scenario.sensors.get("navigation", "truth")))),
@@ -376,6 +382,7 @@ def _generate_plots(out: Path, rows: list[dict[str, Any]]) -> list[Path]:
         ("26_qbar_load_envelope.svg", "xy_qbar", ["load_factor_g"], "Qbar/Load Envelope", "load factor (g)"),
         ("27_target_distance.svg", "time", ["target_distance_m"], "Target Distance", "distance (m)"),
         ("28_agl_terrain.svg", "time", ["altitude_m", "terrain_elevation_m", "altitude_agl_m"], "Terrain/AGL", "altitude (m)"),
+        ("29_ground_contact.svg", "time", ["ground_contact", "impact_speed_mps", "altitude_agl_rate_mps"], "Ground Contact", "contact"),
     ]
     paths: list[Path] = []
     for filename, mode, keys, title, label in specs:

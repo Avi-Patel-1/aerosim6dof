@@ -19,6 +19,7 @@ def build_rows(
     sensors: dict[str, float],
     terrain_elevation_m: float | None = None,
     altitude_agl_m: float | None = None,
+    contact_state: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     roll, pitch, yaw = to_euler(state.quaternion)
     terrain_elevation = float(terrain_elevation_m) if terrain_elevation_m is not None else 0.0
@@ -30,6 +31,15 @@ def build_rows(
         "altitude_m": float(state.position_m[2]),
         "terrain_elevation_m": terrain_elevation,
         "altitude_agl_m": altitude_agl,
+        "terrain_slope_x": float((contact_state or {}).get("terrain_slope_x", 0.0)),
+        "terrain_slope_y": float((contact_state or {}).get("terrain_slope_y", 0.0)),
+        "terrain_slope_deg": float((contact_state or {}).get("terrain_slope_deg", 0.0)),
+        "terrain_rate_mps": float((contact_state or {}).get("terrain_rate_mps", 0.0)),
+        "altitude_agl_rate_mps": float((contact_state or {}).get("altitude_agl_rate_mps", 0.0)),
+        "ground_contact": float((contact_state or {}).get("ground_contact", 0.0)),
+        "ground_contact_state": str((contact_state or {}).get("ground_contact_state", "airborne")),
+        "ground_contact_severity": float((contact_state or {}).get("ground_contact_severity", 0.0)),
+        "impact_speed_mps": float((contact_state or {}).get("impact_speed_mps", 0.0)),
         "vx_mps": float(state.velocity_mps[0]),
         "vy_mps": float(state.velocity_mps[1]),
         "vz_mps": float(state.velocity_mps[2]),

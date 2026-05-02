@@ -68,7 +68,7 @@ JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 SEED_LOCK = threading.Lock()
 SEED_SUITE_STARTED = False
-REQUIRED_HISTORY_COLUMNS = {"altitude_agl_m", "terrain_elevation_m"}
+REQUIRED_HISTORY_COLUMNS = {"altitude_agl_m", "terrain_elevation_m", "altitude_agl_rate_mps", "ground_contact", "impact_speed_mps"}
 
 CAPABILITIES = [
     {"id": "run", "group": "launch", "label": "Run"},

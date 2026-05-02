@@ -196,7 +196,10 @@ class WebApiTests(unittest.TestCase):
                 self.assertFalse(api._seed_suite_ready())
                 self.assertEqual(api._find_run_dirs(), [])
 
-                (run_dir / "history.csv").write_text("time_s,altitude_m,terrain_elevation_m,altitude_agl_m\n0,10,2,8\n")
+                (run_dir / "history.csv").write_text(
+                    "time_s,altitude_m,terrain_elevation_m,altitude_agl_m,altitude_agl_rate_mps,ground_contact,impact_speed_mps\n"
+                    "0,10,2,8,-1,0,0\n"
+                )
                 self.assertTrue(api._seed_suite_ready())
                 self.assertEqual(api._find_run_dirs(), [run_dir])
             finally:
