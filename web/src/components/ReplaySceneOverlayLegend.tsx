@@ -45,9 +45,11 @@ const styles = {
   shell: {
     position: "absolute",
     right: 16,
-    bottom: 16,
+    bottom: 88,
     zIndex: 4,
     width: "min(280px, calc(100% - 32px))",
+    maxHeight: "min(340px, calc(100% - 150px))",
+    overflow: "auto",
     padding: "12px",
     border: "1px solid rgba(237, 237, 243, 0.18)",
     borderRadius: 6,
@@ -60,7 +62,7 @@ const styles = {
   compactShell: {
     width: "min(230px, calc(100% - 24px))",
     right: 12,
-    bottom: 12,
+    bottom: 84,
     padding: "10px"
   },
   header: {
@@ -68,6 +70,7 @@ const styles = {
     alignItems: "center",
     justifyContent: "space-between",
     gap: 10,
+    minWidth: 0,
     marginBottom: 10
   },
   title: {
@@ -81,6 +84,9 @@ const styles = {
     color: "#cdddff",
     fontSize: 11,
     fontWeight: 650,
+    maxWidth: "48%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
     whiteSpace: "nowrap"
   },
   section: {
@@ -93,7 +99,11 @@ const styles = {
     fontSize: 10,
     fontWeight: 700,
     letterSpacing: 0,
-    textTransform: "uppercase"
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    textTransform: "uppercase",
+    whiteSpace: "nowrap"
   },
   item: {
     display: "grid",
@@ -118,6 +128,9 @@ const styles = {
   itemValue: {
     color: "#c3c3cc",
     fontVariantNumeric: "tabular-nums",
+    minWidth: 0,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
     whiteSpace: "nowrap"
   },
   gradient: {
@@ -131,7 +144,8 @@ const styles = {
     gap: 8,
     color: "#c3c3cc",
     fontSize: 10,
-    fontVariantNumeric: "tabular-nums"
+    fontVariantNumeric: "tabular-nums",
+    minWidth: 0
   }
 } satisfies Record<string, CSSProperties>;
 
