@@ -20,6 +20,8 @@ type SceneState = {
   aircraft: THREE.Group;
   pathLine: THREE.Line;
   trailLine: THREE.Line;
+  targetObject: THREE.Group;
+  targetLine: THREE.Line;
   axes: THREE.AxesHelper;
   windArrow: THREE.ArrowHelper;
   marker: THREE.Mesh;
@@ -47,6 +49,11 @@ function disposeScene(scene: THREE.Scene) {
 function numberValue(row: TelemetryRow | undefined, key: string): number {
   const value = row?.[key];
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function optionalNumber(row: TelemetryRow | undefined, key: string): number | null {
+  const value = row?.[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
 function circlePoints(radius: number, y: number, segments = 128): THREE.Vector3[] {
@@ -96,6 +103,30 @@ function buildAircraft(): THREE.Group {
   cockpit.position.set(1.45, 0.48, 0);
   group.add(body, nose, wing, tail, cockpit);
   group.scale.setScalar(1.32);
+  return group;
+}
+
+function buildTargetObject(): THREE.Group {
+  const group = new THREE.Group();
+  const body = new THREE.Mesh(
+    new THREE.OctahedronGeometry(1.6, 0),
+    new THREE.MeshStandardMaterial({ color: "#ededf3", emissive: "#5d6cf0", emissiveIntensity: 0.18, roughness: 0.35 })
+  );
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(3.2, 0.045, 8, 48),
+    new THREE.MeshBasicMaterial({ color: "#cdddff", transparent: true, opacity: 0.84 })
+  );
+  ring.rotation.x = Math.PI / 2;
+  const vertical = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, -4.4, 0), new THREE.Vector3(0, 4.4, 0)]),
+    new THREE.LineBasicMaterial({ color: "#cdddff", transparent: true, opacity: 0.58 })
+  );
+  const horizontal = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-4.4, 0, 0), new THREE.Vector3(4.4, 0, 0)]),
+    new THREE.LineBasicMaterial({ color: "#cdddff", transparent: true, opacity: 0.58 })
+  );
+  group.add(body, ring, vertical, horizontal);
+  group.visible = false;
   return group;
 }
 
@@ -217,16 +248,24 @@ function transformRows(rows: TelemetryRow[]) {
     y: numberValue(row, "y_m"),
     z: numberValue(row, "altitude_m")
   }));
+  const rawTargetPoints = rows.map((row) => {
+    const x = optionalNumber(row, "target_x_m");
+    const y = optionalNumber(row, "target_y_m");
+    const z = optionalNumber(row, "target_z_m");
+    return x === null || y === null || z === null ? null : { x, y, z };
+  });
   if (!points.length) {
     return {
       points: [new THREE.Vector3(0, 0, 0)],
+      targetPoints: [null],
       scale: 1,
       center: new THREE.Vector3(0, 0, 0)
     };
   }
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const altitudes = points.map((point) => Math.max(0, point.z));
+  const extents = [...points, ...rawTargetPoints.filter((point): point is { x: number; y: number; z: number } => point !== null)];
+  const xs = extents.map((point) => point.x);
+  const ys = extents.map((point) => point.y);
+  const altitudes = extents.map((point) => Math.max(0, point.z));
   const centerX = (Math.min(...xs) + Math.max(...xs)) * 0.5;
   const centerY = (Math.min(...ys) + Math.max(...ys)) * 0.5;
   const maxAltitude = Math.max(...altitudes, 1);
@@ -234,6 +273,9 @@ function transformRows(rows: TelemetryRow[]) {
   const scale = 105 / extent;
   return {
     points: points.map((point) => new THREE.Vector3((point.x - centerX) * scale, GROUND_Y + Math.max(0, point.z) * scale, -(point.y - centerY) * scale)),
+    targetPoints: rawTargetPoints.map((point) =>
+      point === null ? null : new THREE.Vector3((point.x - centerX) * scale, GROUND_Y + Math.max(0, point.z) * scale, -(point.y - centerY) * scale)
+    ),
     scale,
     center: new THREE.Vector3(centerX, 0, centerY)
   };
@@ -278,6 +320,12 @@ export function ReplayScene({ rows, currentIndex, environmentMode, cameraMode, s
       new THREE.BufferGeometry(),
       new THREE.LineBasicMaterial({ color: "#ededf3", transparent: true, opacity: 0.9, linewidth: 2 })
     );
+    const targetObject = buildTargetObject();
+    const targetLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]),
+      new THREE.LineBasicMaterial({ color: "#cdddff", transparent: true, opacity: 0.5 })
+    );
+    targetLine.visible = false;
     const axes = new THREE.AxesHelper(6);
     const windArrow = new THREE.ArrowHelper(
       new THREE.Vector3(1, 0, 0),
@@ -292,7 +340,7 @@ export function ReplayScene({ rows, currentIndex, environmentMode, cameraMode, s
       new THREE.MeshStandardMaterial({ color: "#cdddff", emissive: "#272735", roughness: 0.35 })
     );
     aircraft.add(axes);
-    scene.add(ambient, key, fill, landscape, pathLine, trailLine, marker, windArrow, aircraft);
+    scene.add(ambient, key, fill, landscape, pathLine, trailLine, targetLine, targetObject, marker, windArrow, aircraft);
     const clock = new THREE.Clock();
 
     const resize = () => {
@@ -308,7 +356,7 @@ export function ReplayScene({ rows, currentIndex, environmentMode, cameraMode, s
       renderer.render(scene, camera);
     };
     window.addEventListener("resize", resize);
-    stateRef.current = { renderer, scene, camera, aircraft, pathLine, trailLine, axes, windArrow, marker, frame: 0, clock };
+    stateRef.current = { renderer, scene, camera, aircraft, pathLine, trailLine, targetObject, targetLine, axes, windArrow, marker, frame: 0, clock };
     resize();
     animate();
     return () => {
@@ -340,9 +388,19 @@ export function ReplayScene({ rows, currentIndex, environmentMode, cameraMode, s
     }
     const index = Math.min(Math.max(currentIndex, 0), Math.max(transformed.points.length - 1, 0));
     const position = transformed.points[index] ?? new THREE.Vector3(0, 0, 0);
+    const targetPosition = transformed.targetPoints[index];
     const row = rows[index];
     state.aircraft.position.copy(position);
     state.marker.position.copy(position);
+    const hasTarget = targetPosition instanceof THREE.Vector3;
+    state.targetObject.visible = hasTarget;
+    state.targetLine.visible = hasTarget;
+    if (hasTarget) {
+      state.targetObject.position.copy(targetPosition);
+      state.targetObject.rotation.y += 0.04;
+      state.targetLine.geometry.dispose();
+      state.targetLine.geometry = new THREE.BufferGeometry().setFromPoints([position, targetPosition]);
+    }
     state.pathLine.visible = showTrail;
     state.trailLine.visible = showTrail;
     state.axes.visible = showAxes;

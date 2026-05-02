@@ -31,6 +31,7 @@ from aerosim6dof.simulation.contact import GroundContactModel
 from aerosim6dof.simulation.events import EventDetector
 from aerosim6dof.simulation.fault_campaign import run_fault_campaign
 from aerosim6dof.simulation.runner import batch_run, linearize_scenario, monte_carlo_run, report_run
+from aerosim6dof.simulation.targets import TargetObject, TargetSuite
 from aerosim6dof.reports.svg import write_time_plot
 from aerosim6dof.vehicle.actuators import SurfaceActuator
 from aerosim6dof.vehicle.aerodynamics import AerodynamicModel
@@ -133,6 +134,35 @@ class FlightSimTests(unittest.TestCase):
         ground = next(event for event in detector.finalize() if event["type"] == "ground_impact")
         self.assertEqual(ground["classification"], "touchdown")
         self.assertAlmostEqual(ground["impact_speed_mps"], 1.2)
+
+    def test_target_suite_relative_telemetry(self):
+        suite = TargetSuite(
+            [
+                TargetObject(
+                    target_id="incoming",
+                    initial_position_m=np.array([100.0, 0.0, 10.0]),
+                    velocity_mps=np.array([-10.0, 0.0, 0.0]),
+                )
+            ]
+        )
+        summary, rows = suite.sample(0.0, np.array([0.0, 0.0, 10.0]), np.array([20.0, 0.0, 0.0]))
+        self.assertEqual(summary["target_id"], "incoming")
+        self.assertAlmostEqual(summary["target_range_m"], 100.0)
+        self.assertAlmostEqual(summary["target_range_rate_mps"], -30.0)
+        self.assertAlmostEqual(summary["closing_speed_mps"], 30.0)
+        self.assertEqual(rows[0]["target_active"], 1.0)
+
+    def test_target_events_track_closest_approach(self):
+        detector = EventDetector({"target_threshold_m": 8.0})
+        detector.update({"time_s": 0.0, "altitude_m": 10.0, "vz_mps": 0.0, "target_id": "a", "target_range_m": 20.0}, {}, 10.0)
+        detector.update({"time_s": 1.0, "altitude_m": 10.0, "vz_mps": 0.0, "target_id": "a", "target_range_m": 6.0}, {}, 10.0)
+        detector.update({"time_s": 2.0, "altitude_m": 10.0, "vz_mps": 0.0, "target_id": "a", "target_range_m": 12.0}, {}, 10.0)
+        events = detector.finalize()
+        closest = next(event for event in events if event["type"] == "closest_approach")
+        crossing = next(event for event in events if event["type"] == "target_crossing")
+        self.assertAlmostEqual(closest["miss_distance_m"], 6.0)
+        self.assertEqual(closest["target_id"], "a")
+        self.assertAlmostEqual(crossing["miss_distance_m"], 6.0)
 
     def test_integrators(self):
         def fn(_t, y):
@@ -297,6 +327,26 @@ class FlightSimTests(unittest.TestCase):
             self.assertIn("impact_speed_mps", history_header)
             manifest = json.loads((out / "manifest.json").read_text())
             self.assertEqual(manifest["scenario"], "nominal_ascent")
+
+    def test_target_intercept_writes_target_telemetry(self):
+        scenario = Scenario.from_file(ROOT / "examples/scenarios/target_intercept.json")
+        with tempfile.TemporaryDirectory() as tmp:
+            summary = run_scenario(scenario, tmp)
+            out = Path(tmp)
+            self.assertTrue((out / "targets.csv").exists())
+            history_header = (out / "history.csv").read_text().splitlines()[0]
+            self.assertIn("target_range_m", history_header)
+            self.assertIn("closing_speed_mps", history_header)
+            self.assertIn("relative_z_m", history_header)
+            target_header = (out / "targets.csv").read_text().splitlines()[0]
+            self.assertIn("target_id", target_header)
+            self.assertIn("target_range_rate_mps", target_header)
+            events = json.loads((out / "events.json").read_text())
+            self.assertTrue(any(event["type"] == "closest_approach" for event in events))
+            self.assertIsNotNone(summary["min_target_range_m"])
+            self.assertIsNotNone(summary["max_closing_speed_mps"])
+            manifest = json.loads((out / "manifest.json").read_text())
+            self.assertIn("targets.csv", manifest["files"])
 
     def test_compare_trim_and_linearize(self):
         scenario = Scenario.from_file(ROOT / "examples/scenarios/nominal_ascent.json")

@@ -14,6 +14,18 @@
     "target_position_m": [1450.0, 0.0, 1500.0],
     "throttle": 0.88
   },
+  "targets": [
+    {
+      "id": "primary_target",
+      "initial_position_m": [1450.0, 0.0, 1500.0],
+      "velocity_mps": [-8.0, 0.0, -1.5]
+    },
+    {
+      "id": "offset_reference",
+      "initial_position_m": [1300.0, 170.0, 1380.0],
+      "velocity_mps": [-4.0, -2.0, 0.0]
+    }
+  ],
   "events": {
     "target_threshold_m": 75.0,
     "qbar_limit_pa": 90000.0,

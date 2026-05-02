@@ -23,6 +23,9 @@ class EventDetector:
         self.load_seen = False
         self.saturation_seen: set[str] = set()
         self.target_seen = False
+        self.closest_target_distance_m = float("inf")
+        self.closest_target_time_s = 0.0
+        self.closest_target_id = ""
 
     def update(self, row: dict[str, Any], controls: dict[str, Any], above_ground_m: float, contact: dict[str, Any] | None = None) -> bool:
         t = float(row["time_s"])
@@ -51,10 +54,14 @@ class EventDetector:
             if controls.get(key, False) and surface not in self.saturation_seen:
                 self._add(t, "actuator_saturation", f"{surface} reached its command or rate limit.")
                 self.saturation_seen.add(surface)
-        miss = row.get("target_distance_m")
+        miss = _target_distance(row)
         threshold = float(self.config.get("target_threshold_m", 25.0))
-        if isinstance(miss, (int, float)) and miss == miss and miss <= threshold and not self.target_seen:
-            self._add(t, "target_crossing", f"Target distance fell below {threshold:.1f} m.")
+        if math.isfinite(miss) and miss < self.closest_target_distance_m:
+            self.closest_target_distance_m = miss
+            self.closest_target_time_s = t
+            self.closest_target_id = str(row.get("target_id", ""))
+        if math.isfinite(miss) and miss <= threshold and not self.target_seen:
+            self._add(t, "target_crossing", f"Target distance fell below {threshold:.1f} m.", target_id=str(row.get("target_id", "")), miss_distance_m=miss)
             self.target_seen = True
         if above_ground_m <= 0.0 and t > 0.0 and not self.ground_seen:
             contact_data = contact or {}
@@ -74,6 +81,14 @@ class EventDetector:
         return False
 
     def finalize(self) -> list[dict[str, Any]]:
+        if math.isfinite(self.closest_target_distance_m):
+            self._add(
+                self.closest_target_time_s,
+                "closest_approach",
+                f"Closest target approach was {self.closest_target_distance_m:.2f} m.",
+                target_id=self.closest_target_id,
+                miss_distance_m=self.closest_target_distance_m,
+            )
         self._add(self.max_altitude_time_s, "max_altitude", f"Maximum altitude was {self.max_altitude_m:.2f} m.")
         return sorted(self.events, key=lambda e: float(e["time_s"]))
 
@@ -87,3 +102,10 @@ def _finite(value: Any, default: float) -> float:
     except (TypeError, ValueError):
         return default
     return number if math.isfinite(number) else default
+
+
+def _target_distance(row: dict[str, Any]) -> float:
+    target_range = _finite(row.get("target_range_m"), float("inf"))
+    if math.isfinite(target_range):
+        return target_range
+    return _finite(row.get("target_distance_m"), float("inf"))

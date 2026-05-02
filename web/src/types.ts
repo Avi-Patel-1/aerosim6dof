@@ -140,6 +140,7 @@ export type TelemetrySeries = {
   truth: TelemetryRow[];
   controls: TelemetryRow[];
   sensors: TelemetryRow[];
+  targets: TelemetryRow[];
   metadata?: Record<string, TelemetryChannelMetadata>;
 };
 

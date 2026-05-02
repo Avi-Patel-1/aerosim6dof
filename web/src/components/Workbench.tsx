@@ -55,7 +55,7 @@ import { ReplayScene } from "./ReplayScene";
 import { TelemetryChart } from "./TelemetryChart";
 
 type TabId = "replay" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
-type ChartMode = "flight" | "controls" | "sensors";
+type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
 type CameraMode = "chase" | "orbit" | "cockpit" | "map";
 
@@ -71,6 +71,7 @@ const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
 
 const DEFAULT_CHANNELS: Record<ChartMode, string[]> = {
   flight: ["altitude_m", "speed_mps", "pitch_deg", "load_factor_g"],
+  intercept: ["target_range_m", "closing_speed_mps", "target_range_rate_mps", "relative_z_m"],
   controls: ["elevator_deg", "aileron_deg", "rudder_deg", "throttle"],
   sensors: ["pitot_airspeed_mps", "baro_alt_m", "gps_z_m", "radar_agl_m"]
 };
@@ -750,8 +751,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
             Home
           </button>
           <div>
-            <p className="eyebrow">AeroSim Flight Lab</p>
-            <h1>6DOF Simulator</h1>
+            <p className="eyebrow">AeroLab</p>
+            <h1>Flight Simulator</h1>
           </div>
         </div>
         <nav className="tabs" aria-label="Workbench tabs">
@@ -903,6 +904,14 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                   <strong>{formatMetric(currentRow?.qbar_pa ?? runDetail?.summary.max_qbar_pa, " Pa", 0)}</strong>
                 </div>
                 <div>
+                  <span>Target Range</span>
+                  <strong>{formatMetric(currentRow?.target_range_m ?? runDetail?.summary.min_target_range_m, " m", 1)}</strong>
+                </div>
+                <div>
+                  <span>Closing</span>
+                  <strong>{formatMetric(currentRow?.closing_speed_mps ?? runDetail?.summary.max_closing_speed_mps, " m/s", 1)}</strong>
+                </div>
+                <div>
                   <span>Final Alt</span>
                   <strong>{formatMetric(final.altitude_m, " m", 1)}</strong>
                 </div>
@@ -955,7 +964,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 </div>
                 <div className="telemetry-tools">
                   <div className="mini-segment">
-                    {(["flight", "controls", "sensors"] as ChartMode[]).map((mode) => (
+                    {(["flight", "intercept", "controls", "sensors"] as ChartMode[]).map((mode) => (
                       <button key={mode} className={chartMode === mode ? "active" : ""} onClick={() => setChartMode(mode)}>
                         {mode}
                       </button>

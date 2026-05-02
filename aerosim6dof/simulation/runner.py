@@ -39,6 +39,7 @@ from .dynamics import DynamicsModel
 from .events import EventDetector
 from .logger import build_rows
 from .monte_carlo_hooks import perturb_scenario
+from .targets import TargetSuite
 
 
 def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
@@ -49,6 +50,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     wind_model: WindModel = components["wind"]
     terrain: TerrainModel = components["terrain"]
     contact_model: GroundContactModel = components["contact"]
+    targets: TargetSuite = components["targets"]
     dynamics: DynamicsModel = components["dynamics"]
     guidance_model: GuidanceModel = components["guidance"]
     autopilot: Autopilot = components["autopilot"]
@@ -60,6 +62,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     truth_rows: list[dict[str, Any]] = []
     control_rows: list[dict[str, Any]] = []
     sensor_rows: list[dict[str, Any]] = []
+    target_rows: list[dict[str, Any]] = []
     controls_eff: dict[str, float] = {"elevator": 0.0, "aileron": 0.0, "rudder": 0.0, "throttle": 0.0}
     steps = int(math.floor(scenario.duration / scenario.dt)) + 1
     for step in range(steps):
@@ -90,6 +93,8 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
                 "altitude_agl_m": terrain_state["altitude_agl_m"],
             },
         )
+        target_state, target_samples = targets.sample(t, state.position_m, state.velocity_mps)
+        target_rows.extend(target_samples)
         history, truth, controls, sensor_row = build_rows(
             t,
             state,
@@ -102,6 +107,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
             terrain_elevation_m=terrain_state["terrain_elevation_m"],
             altitude_agl_m=terrain_state["altitude_agl_m"],
             contact_state=contact_state,
+            target_state=target_state,
         )
         history_rows.append(history)
         truth_rows.append(truth)
@@ -116,7 +122,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
             break
     events = detector.finalize()
     summary = summarize(history_rows, events, scenario.name)
-    _write_artifacts(out, scenario, summary, events, history_rows, truth_rows, control_rows, sensor_rows)
+    _write_artifacts(out, scenario, summary, events, history_rows, truth_rows, control_rows, sensor_rows, target_rows)
     return summary
 
 
@@ -248,6 +254,7 @@ def _build_components(scenario: Scenario) -> dict[str, Any]:
         "wind": WindModel(scenario.wind, seed=int(scenario.sensors.get("seed", 7)) + 101),
         "terrain": TerrainModel(scenario.environment.get("terrain", {})),
         "contact": GroundContactModel(ground_contact_config(scenario)),
+        "targets": TargetSuite.from_scenario(scenario),
         "guidance": GuidanceModel(scenario.guidance),
         "autopilot": Autopilot({**scenario.guidance.get("autopilot", {}), **scenario.autopilot}),
         "navigation": NavigationHook(str(scenario.guidance.get("navigation", scenario.sensors.get("navigation", "truth")))),
@@ -316,11 +323,16 @@ def _write_artifacts(
     truth: list[dict[str, Any]],
     controls: list[dict[str, Any]],
     sensors: list[dict[str, Any]],
+    targets: list[dict[str, Any]],
 ) -> None:
     write_csv(out / "history.csv", history)
     write_csv(out / "truth.csv", truth)
     write_csv(out / "controls.csv", controls)
     write_csv(out / "sensors.csv", sensors)
+    target_files: list[str] = []
+    if targets:
+        write_csv(out / "targets.csv", targets)
+        target_files.append("targets.csv")
     write_json(out / "events.json", events)
     write_json(out / "summary.json", summary)
     write_json(out / "scenario_resolved.json", scenario.raw)
@@ -341,6 +353,7 @@ def _write_artifacts(
                 "truth.csv",
                 "controls.csv",
                 "sensors.csv",
+                *target_files,
                 "events.json",
                 "summary.json",
                 "scenario_resolved.json",
@@ -383,6 +396,7 @@ def _generate_plots(out: Path, rows: list[dict[str, Any]]) -> list[Path]:
         ("27_target_distance.svg", "time", ["target_distance_m"], "Target Distance", "distance (m)"),
         ("28_agl_terrain.svg", "time", ["altitude_m", "terrain_elevation_m", "altitude_agl_m"], "Terrain/AGL", "altitude (m)"),
         ("29_ground_contact.svg", "time", ["ground_contact", "impact_speed_mps", "altitude_agl_rate_mps"], "Ground Contact", "contact"),
+        ("30_target_kinematics.svg", "time", ["target_range_m", "closing_speed_mps", "target_range_rate_mps"], "Target Kinematics", "target"),
     ]
     paths: list[Path] = []
     for filename, mode, keys, title, label in specs:

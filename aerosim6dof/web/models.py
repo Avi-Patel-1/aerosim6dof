@@ -163,4 +163,5 @@ class TelemetrySeries(BaseModel):
     truth: list[dict[str, Any]] = Field(default_factory=list)
     controls: list[dict[str, Any]] = Field(default_factory=list)
     sensors: list[dict[str, Any]] = Field(default_factory=list)
+    targets: list[dict[str, Any]] = Field(default_factory=list)
     metadata: dict[str, TelemetryChannelMetadata] = Field(default_factory=dict)

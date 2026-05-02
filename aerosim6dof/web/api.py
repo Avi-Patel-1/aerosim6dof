@@ -68,7 +68,15 @@ JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 SEED_LOCK = threading.Lock()
 SEED_SUITE_STARTED = False
-REQUIRED_HISTORY_COLUMNS = {"altitude_agl_m", "terrain_elevation_m", "altitude_agl_rate_mps", "ground_contact", "impact_speed_mps"}
+REQUIRED_HISTORY_COLUMNS = {
+    "altitude_agl_m",
+    "terrain_elevation_m",
+    "altitude_agl_rate_mps",
+    "ground_contact",
+    "impact_speed_mps",
+    "target_range_m",
+    "closing_speed_mps",
+}
 
 CAPABILITIES = [
     {"id": "run", "group": "launch", "label": "Run"},
@@ -311,7 +319,7 @@ def get_telemetry(run_id: str, stride: int = Query(1, ge=1, le=5000)) -> Telemet
     datasets: dict[str, list[dict[str, Any]]] = {}
     channels: dict[str, list[str]] = {}
     sample_count = 0
-    for name in ("history", "truth", "controls", "sensors"):
+    for name in ("history", "truth", "controls", "sensors", "targets"):
         path = run_dir / f"{name}.csv"
         if not path.exists():
             datasets[name] = []
@@ -740,6 +748,7 @@ def _list_artifacts(run_id: str, run_dir: Path) -> list[ArtifactRef]:
         "truth.csv",
         "controls.csv",
         "sensors.csv",
+        "targets.csv",
         "summary.json",
         "manifest.json",
         "events.json",

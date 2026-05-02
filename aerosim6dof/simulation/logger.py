@@ -20,10 +20,12 @@ def build_rows(
     terrain_elevation_m: float | None = None,
     altitude_agl_m: float | None = None,
     contact_state: dict[str, Any] | None = None,
+    target_state: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     roll, pitch, yaw = to_euler(state.quaternion)
     terrain_elevation = float(terrain_elevation_m) if terrain_elevation_m is not None else 0.0
     altitude_agl = float(altitude_agl_m) if altitude_agl_m is not None else float(state.position_m[2]) - terrain_elevation
+    target = target_state or {}
     truth = {
         "time_s": t,
         "x_m": float(state.position_m[0]),
@@ -68,6 +70,21 @@ def build_rows(
         "propulsion_throttle_actual": float(evaluation.propulsion.throttle_actual),
         "propulsion_health": evaluation.propulsion.health,
         "energy_j_per_kg": float(evaluation.energy_j_per_kg),
+        "target_count": _float(target.get("target_count"), 0.0),
+        "target_id": str(target.get("target_id", "")),
+        "target_active": _float(target.get("target_active"), 0.0),
+        "target_x_m": _float(target.get("target_x_m")),
+        "target_y_m": _float(target.get("target_y_m")),
+        "target_z_m": _float(target.get("target_z_m")),
+        "target_vx_mps": _float(target.get("target_vx_mps")),
+        "target_vy_mps": _float(target.get("target_vy_mps")),
+        "target_vz_mps": _float(target.get("target_vz_mps")),
+        "target_range_m": _float(target.get("target_range_m")),
+        "target_range_rate_mps": _float(target.get("target_range_rate_mps")),
+        "closing_speed_mps": _float(target.get("closing_speed_mps")),
+        "relative_x_m": _float(target.get("relative_x_m")),
+        "relative_y_m": _float(target.get("relative_y_m")),
+        "relative_z_m": _float(target.get("relative_z_m")),
         "target_distance_m": float(guidance.target_distance_m),
         "guidance_mode": guidance.mode,
         "pitch_command_deg": math.degrees(guidance.pitch_rad),
@@ -93,3 +110,11 @@ def build_rows(
 
 def _flag(value: bool) -> float:
     return 1.0 if value else 0.0
+
+
+def _float(value: Any, default: float = float("nan")) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    return number if math.isfinite(number) else default

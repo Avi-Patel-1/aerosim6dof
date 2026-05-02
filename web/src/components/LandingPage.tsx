@@ -184,7 +184,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
   return (
     <main ref={rootRef} className={`mercury-intro ${entering ? "entering" : ""} ${returning ? "returning" : ""}`}>
       <nav className="intro-nav" aria-label="Intro">
-        <span>AeroSim 6DOF</span>
+        <span>AeroLab</span>
         <button onClick={enter} disabled={returning || !previewReady}>Open simulator</button>
       </nav>
 
@@ -195,7 +195,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
         <div className="glass-wall" aria-hidden="true" />
         <div className="floor-grid" aria-hidden="true" />
 
-        <button className="command-console" onClick={enter} disabled={returning || !previewReady} aria-label="Enter AeroSim 6DOF simulator">
+        <button className="command-console" onClick={enter} disabled={returning || !previewReady} aria-label="Enter AeroLab simulator">
           <span className="monitor-stand" aria-hidden="true" />
           <span className="monitor-shell">
             <span ref={screenRef} className="monitor-screen">
@@ -218,15 +218,15 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
                   </>
                 )}
               </span>
-              <span className="screen-kicker">LIVE 6DOF</span>
+              <span className="screen-kicker">AEROLAB</span>
               <span className="screen-status">{previewReady ? "READY" : "SYNCING"}</span>
             </span>
           </span>
         </button>
 
         <div className="intro-copy">
-          <p>Mountain desk flight lab</p>
-          <h1>AeroSim 6DOF</h1>
+          <p>Open Source Flight Simulator</p>
+          <h1>AeroLab</h1>
           <button onClick={enter} disabled={returning || !previewReady}>Enter simulation</button>
         </div>
       </section>

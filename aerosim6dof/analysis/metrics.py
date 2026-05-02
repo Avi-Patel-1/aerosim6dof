@@ -11,6 +11,10 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
     final = rows[-1]
     miss = final.get("target_distance_m")
     miss_value = float(miss) if isinstance(miss, (float, int)) and np.isfinite(miss) else None
+    min_target_range = _finite_min([r.get("target_range_m") for r in rows])
+    min_target_distance = min_target_range
+    if min_target_distance is None:
+        min_target_distance = miss_value if miss_value is not None else _finite_min([r.get("target_distance_m") for r in rows])
     return {
         "scenario": scenario_name,
         "samples": len(rows),
@@ -26,6 +30,9 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
             "ground_contact_severity": _finite_float(final.get("ground_contact_severity")),
             "speed_mps": float(final["speed_mps"]),
             "mass_kg": float(final["mass_kg"]),
+            "target_id": final.get("target_id"),
+            "target_range_m": _finite_float(final.get("target_range_m")),
+            "closing_speed_mps": _finite_float(final.get("closing_speed_mps")),
         },
         "max_altitude_m": max(float(r["altitude_m"]) for r in rows),
         "min_altitude_agl_m": _finite_min([r.get("altitude_agl_m") for r in rows]),
@@ -35,9 +42,9 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
         "max_speed_mps": max(float(r["speed_mps"]) for r in rows),
         "max_load_factor_g": max(float(r["load_factor_g"]) for r in rows),
         "max_qbar_pa": max(float(r["qbar_pa"]) for r in rows),
-        "min_target_distance_m": miss_value
-        if miss_value is not None
-        else _finite_min([r.get("target_distance_m") for r in rows]),
+        "min_target_distance_m": min_target_distance,
+        "min_target_range_m": min_target_range,
+        "max_closing_speed_mps": _finite_max([r.get("closing_speed_mps") for r in rows]),
         "event_count": len(events),
     }
 

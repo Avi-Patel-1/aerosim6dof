@@ -43,6 +43,7 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["qbar_pa"]["group"], "Aerodynamics")
         self.assertEqual(payload["metadata"]["load_factor_g"]["role"], "aero")
         self.assertEqual(payload["metadata"]["pitch_deg"]["group"], "Attitude")
+        self.assertIn("targets", payload["channels"])
 
         alarms = self.client.get(f"/api/runs/{run_id}/alarms")
         self.assertEqual(alarms.status_code, 200)
@@ -70,7 +71,11 @@ class WebApiTests(unittest.TestCase):
 
             telemetry = self.client.get(f"/api/runs/{run_id}/telemetry?stride=50")
             self.assertEqual(telemetry.status_code, 200)
-            self.assertGreater(len(telemetry.json()["history"]), 0)
+            telemetry_payload = telemetry.json()
+            self.assertGreater(len(telemetry_payload["history"]), 0)
+            self.assertIn("target_range_m", telemetry_payload["channels"]["history"])
+            self.assertEqual(telemetry_payload["metadata"]["target_range_m"]["display_name"], "Target Range")
+            self.assertEqual(telemetry_payload["metadata"]["closing_speed_mps"]["group"], "Intercept")
         finally:
             api.WEB_RUNS_DIR = original
             shutil.rmtree(run_root, ignore_errors=True)
@@ -197,8 +202,8 @@ class WebApiTests(unittest.TestCase):
                 self.assertEqual(api._find_run_dirs(), [])
 
                 (run_dir / "history.csv").write_text(
-                    "time_s,altitude_m,terrain_elevation_m,altitude_agl_m,altitude_agl_rate_mps,ground_contact,impact_speed_mps\n"
-                    "0,10,2,8,-1,0,0\n"
+                    "time_s,altitude_m,terrain_elevation_m,altitude_agl_m,altitude_agl_rate_mps,ground_contact,impact_speed_mps,target_range_m,closing_speed_mps\n"
+                    "0,10,2,8,-1,0,0,100,20\n"
                 )
                 self.assertTrue(api._seed_suite_ready())
                 self.assertEqual(api._find_run_dirs(), [run_dir])
