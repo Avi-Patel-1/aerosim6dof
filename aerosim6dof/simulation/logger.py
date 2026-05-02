@@ -21,11 +21,13 @@ def build_rows(
     altitude_agl_m: float | None = None,
     contact_state: dict[str, Any] | None = None,
     target_state: dict[str, Any] | None = None,
+    interceptor_state: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     roll, pitch, yaw = to_euler(state.quaternion)
     terrain_elevation = float(terrain_elevation_m) if terrain_elevation_m is not None else 0.0
     altitude_agl = float(altitude_agl_m) if altitude_agl_m is not None else float(state.position_m[2]) - terrain_elevation
     target = target_state or {}
+    interceptor = interceptor_state or {}
     truth = {
         "time_s": t,
         "x_m": float(state.position_m[0]),
@@ -72,6 +74,9 @@ def build_rows(
         "energy_j_per_kg": float(evaluation.energy_j_per_kg),
         "target_count": _float(target.get("target_count"), 0.0),
         "target_id": str(target.get("target_id", "")),
+        "target_label": str(target.get("target_label", "")),
+        "target_role": str(target.get("target_role", "")),
+        "target_primary": _float(target.get("target_primary"), 0.0),
         "target_active": _float(target.get("target_active"), 0.0),
         "target_x_m": _float(target.get("target_x_m")),
         "target_y_m": _float(target.get("target_y_m")),
@@ -85,6 +90,19 @@ def build_rows(
         "relative_x_m": _float(target.get("relative_x_m")),
         "relative_y_m": _float(target.get("relative_y_m")),
         "relative_z_m": _float(target.get("relative_z_m")),
+        "interceptor_count": _float(interceptor.get("interceptor_count"), 0.0),
+        "interceptor_id": str(interceptor.get("interceptor_id", "")),
+        "interceptor_target_id": str(interceptor.get("interceptor_target_id", "")),
+        "interceptor_active": _float(interceptor.get("interceptor_active"), 0.0),
+        "interceptor_launched": _float(interceptor.get("interceptor_launched"), 0.0),
+        "interceptor_fuzed": _float(interceptor.get("interceptor_fuzed"), 0.0),
+        "interceptor_x_m": _float(interceptor.get("interceptor_x_m")),
+        "interceptor_y_m": _float(interceptor.get("interceptor_y_m")),
+        "interceptor_z_m": _float(interceptor.get("interceptor_z_m")),
+        "interceptor_range_m": _float(interceptor.get("interceptor_range_m")),
+        "interceptor_closing_speed_mps": _float(interceptor.get("interceptor_closing_speed_mps")),
+        "interceptor_best_miss_m": _float(interceptor.get("interceptor_best_miss_m")),
+        "interceptor_time_to_go_s": _float(interceptor.get("interceptor_time_to_go_s")),
         "target_distance_m": float(guidance.target_distance_m),
         "guidance_mode": guidance.mode,
         "pitch_command_deg": math.degrees(guidance.pitch_rad),

@@ -57,7 +57,8 @@ import { TelemetryChart } from "./TelemetryChart";
 type TabId = "replay" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
 type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
-type CameraMode = "chase" | "orbit" | "cockpit" | "map";
+type CameraMode = "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
+type TrailColorMode = "plain" | "speed" | "qbar" | "load" | "altitude";
 
 const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "replay", label: "Replay", title: "Replay the vehicle in full flight context.", subtitle: "Scrub attitude, trajectory, events, and sampled telemetry from the selected output run." },
@@ -71,7 +72,7 @@ const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
 
 const DEFAULT_CHANNELS: Record<ChartMode, string[]> = {
   flight: ["altitude_m", "speed_mps", "pitch_deg", "load_factor_g"],
-  intercept: ["target_range_m", "closing_speed_mps", "target_range_rate_mps", "relative_z_m"],
+  intercept: ["target_range_m", "interceptor_range_m", "closing_speed_mps", "interceptor_closing_speed_mps", "relative_z_m"],
   controls: ["elevator_deg", "aileron_deg", "rudder_deg", "throttle"],
   sensors: ["pitot_airspeed_mps", "baro_alt_m", "gps_z_m", "radar_agl_m"]
 };
@@ -167,6 +168,50 @@ function updateDraftVector(text: string, path: string[], index: number, value: n
   return JSON.stringify(next, null, 2);
 }
 
+function updateDraftArrayObject(text: string, path: string[], index: number, key: string, value: unknown): string {
+  const current = parseDraft(text) ?? {};
+  const next = structuredClone(current) as Record<string, unknown>;
+  const list = arrayAt(next, path);
+  const item = asRecord(list[index]);
+  list[index] = { ...item, [key]: value };
+  return JSON.stringify(next, null, 2);
+}
+
+function updateDraftArrayVector(text: string, path: string[], index: number, key: string, vectorIndex: number, value: number): string {
+  const current = parseDraft(text) ?? {};
+  const next = structuredClone(current) as Record<string, unknown>;
+  const list = arrayAt(next, path);
+  const item = asRecord(list[index]);
+  const vector = Array.isArray(item[key]) ? [...(item[key] as unknown[])] : [0, 0, 0];
+  vector[vectorIndex] = value;
+  list[index] = { ...item, [key]: vector };
+  return JSON.stringify(next, null, 2);
+}
+
+function appendDraftArrayObject(text: string, path: string[], value: Record<string, unknown>): string {
+  const current = parseDraft(text) ?? {};
+  const next = structuredClone(current) as Record<string, unknown>;
+  const list = arrayAt(next, path);
+  list.push(value);
+  return JSON.stringify(next, null, 2);
+}
+
+function arrayAt(root: Record<string, unknown>, path: string[]): unknown[] {
+  let cursor: Record<string, unknown> = root;
+  for (const key of path.slice(0, -1)) {
+    const existing = cursor[key];
+    if (!existing || typeof existing !== "object" || Array.isArray(existing)) {
+      cursor[key] = {};
+    }
+    cursor = cursor[key] as Record<string, unknown>;
+  }
+  const leaf = path[path.length - 1];
+  if (!Array.isArray(cursor[leaf])) {
+    cursor[leaf] = [];
+  }
+  return cursor[leaf] as unknown[];
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
@@ -183,6 +228,20 @@ function configId(value: unknown): string {
   const text = asStringField(value);
   const name = text.split("/").pop() ?? text;
   return name.replace(/\.json$/i, "");
+}
+
+function vectorValue(value: unknown, index: number, fallback = 0): number {
+  return Array.isArray(value) ? asNumberField(value[index], fallback) : fallback;
+}
+
+function explainScenario(draft: Record<string, unknown>): string {
+  const targets = Array.isArray(draft.targets) ? draft.targets.length : 0;
+  const interceptors = Array.isArray(draft.interceptors) ? draft.interceptors.length : 0;
+  const guidance = asRecord(draft.guidance);
+  const initial = asRecord(draft.initial);
+  const position = Array.isArray(initial.position_m) ? initial.position_m : [];
+  const altitude = asNumberField(position[2], 0);
+  return `${asStringField(draft.name, "scenario")} runs ${asNumberField(draft.duration, 0)}s from ${altitude.toFixed(0)} m using ${asStringField(guidance.mode, "guidance")} with ${targets} target${targets === 1 ? "" : "s"} and ${interceptors} interceptor${interceptors === 1 ? "" : "s"}.`;
 }
 
 type SelectProps = {
@@ -297,6 +356,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [showTrail, setShowTrail] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [showWind, setShowWind] = useState(false);
+  const [showVelocity, setShowVelocity] = useState(true);
+  const [showAcceleration, setShowAcceleration] = useState(false);
+  const [showSensors, setShowSensors] = useState(false);
+  const [trailColorMode, setTrailColorMode] = useState<TrailColorMode>("speed");
   const [busyAction, setBusyAction] = useState("");
   const [activeJob, setActiveJob] = useState<JobSummary | null>(null);
   const [jobHistory, setJobHistory] = useState<JobSummary[]>([]);
@@ -631,6 +694,38 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     }
   };
 
+  const applyInterceptPreset = () => {
+    setScenarioText((text) => {
+      const next = structuredClone(parseDraft(text) ?? {}) as Record<string, unknown>;
+      next.name = asStringField(next.name, "browser_intercept_mission");
+      next.duration = asNumberField(next.duration, 18);
+      next.guidance = {
+        ...asRecord(next.guidance),
+        mode: "target_intercept",
+        target_position_m: [1450, 0, 1500],
+        throttle: asNumberField(asRecord(next.guidance).throttle, 0.88)
+      };
+      next.targets = [
+        { id: "primary_target", label: "Primary target", role: "primary", initial_position_m: [1450, 0, 1500], velocity_mps: [-8, 0, -1.5] },
+        { id: "offset_reference", label: "Offset reference", role: "decoy", initial_position_m: [1300, 170, 1380], velocity_mps: [-4, -2, 0] }
+      ];
+      next.interceptors = [
+        {
+          id: "range_defender_1",
+          target_id: "primary_target",
+          launch_time_s: 2,
+          initial_velocity_mps: [10, 0, 0],
+          max_speed_mps: 280,
+          max_accel_mps2: 90,
+          guidance_gain: 2.1,
+          proximity_fuze_m: 25
+        }
+      ];
+      next.events = { ...asRecord(next.events), target_threshold_m: 75, qbar_limit_pa: 90000, load_limit_g: 12 };
+      return JSON.stringify(next, null, 2);
+    });
+  };
+
   const chartRows = useMemo(() => {
     if (!telemetry) {
       return [];
@@ -738,9 +833,12 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const draftGuidance = asRecord(draft.guidance);
   const draftSensors = asRecord(draft.sensors);
   const draftEvents = asRecord(draft.events);
+  const draftTargets = Array.isArray(draft.targets) ? (draft.targets as unknown[]).map(asRecord) : [];
+  const draftInterceptors = Array.isArray(draft.interceptors) ? (draft.interceptors as unknown[]).map(asRecord) : [];
   const position = Array.isArray(draftInitial.position_m) ? draftInitial.position_m : [];
   const velocity = Array.isArray(draftInitial.velocity_mps) ? draftInitial.velocity_mps : [];
   const euler = Array.isArray(draftInitial.euler_deg) ? draftInitial.euler_deg : [];
+  const scenarioExplanation = explainScenario(draft);
 
   return (
     <main className={`workbench ${activeTab === "replay" ? "sim-mode" : ""}`}>
@@ -826,9 +924,9 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                     ))}
                   </div>
                   <div className="mini-segment">
-                    {(["chase", "orbit", "cockpit", "map"] as CameraMode[]).map((mode) => (
+                    {(["chase", "orbit", "cockpit", "map", "rangeSafety"] as CameraMode[]).map((mode) => (
                       <button key={mode} className={cameraMode === mode ? "active" : ""} onClick={() => setCameraMode(mode)}>
-                        {mode}
+                        {mode === "rangeSafety" ? "Range Safety" : mode}
                       </button>
                     ))}
                   </div>
@@ -858,6 +956,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 showTrail={showTrail}
                 showAxes={showAxes}
                 showWind={showWind}
+                showVelocity={showVelocity}
+                showAcceleration={showAcceleration}
+                showSensors={showSensors}
+                trailColorMode={trailColorMode}
               />
               <div className="scrubber">
                 <button
@@ -912,6 +1014,14 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                   <strong>{formatMetric(currentRow?.closing_speed_mps ?? runDetail?.summary.max_closing_speed_mps, " m/s", 1)}</strong>
                 </div>
                 <div>
+                  <span>Interceptor</span>
+                  <strong>{formatMetric(currentRow?.interceptor_range_m ?? runDetail?.summary.min_interceptor_range_m, " m", 1)}</strong>
+                </div>
+                <div>
+                  <span>Fuzes</span>
+                  <strong>{formatMetric(runDetail?.summary.interceptor_fuze_count, "", 0)}</strong>
+                </div>
+                <div>
                   <span>Final Alt</span>
                   <strong>{formatMetric(final.altitude_m, " m", 1)}</strong>
                 </div>
@@ -928,13 +1038,26 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 <div className="readout-grid">
                   <span>{cameraMode}</span>
                   <span>{environmentMode}</span>
-                  <span>{playbackSpeed}x</span>
+                  <span>{trailColorMode}</span>
                 </div>
-                <div className="toggle-row">
+                <div className="toggle-row dense">
                   <button className={showTrail ? "active" : ""} onClick={() => setShowTrail((value) => !value)}>Trail</button>
                   <button className={showAxes ? "active" : ""} onClick={() => setShowAxes((value) => !value)}>Axes</button>
                   <button className={showWind ? "active" : ""} onClick={() => setShowWind((value) => !value)}>Wind</button>
+                  <button className={showVelocity ? "active" : ""} onClick={() => setShowVelocity((value) => !value)}>Velocity</button>
+                  <button className={showAcceleration ? "active" : ""} onClick={() => setShowAcceleration((value) => !value)}>Accel</button>
+                  <button className={showSensors ? "active" : ""} onClick={() => setShowSensors((value) => !value)}>Sensors</button>
                 </div>
+                <label className="field compact-field">
+                  <span>Trail Color</span>
+                  <select value={trailColorMode} onChange={(event) => setTrailColorMode(event.target.value as TrailColorMode)}>
+                    {(["plain", "speed", "qbar", "load", "altitude"] as TrailColorMode[]).map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </section>
               <ActiveAlarmsPanel alarms={alarms} acknowledged={acknowledgedAlarms} onAcknowledge={acknowledgeAlarm} onJump={jumpToReplayTime} />
               <section className="side-section">
@@ -1016,6 +1139,9 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
               <SelectField label="B" value={compareRunId} onChange={setCompareRunId} options={runOptions} />
             </ActionCard>
             <ActionCard title="Report" icon={<FileJson size={18} />} running={busyAction === "report"} onRun={() => runTool("report", { run_id: selectedRunId }, "reports")}>
+              <SelectField label="Run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
+            </ActionCard>
+            <ActionCard title="Engagement" icon={<ScanLine size={18} />} running={busyAction === "engagement_report"} onRun={() => runTool("engagement_report", { run_id: selectedRunId }, "reports")}>
               <SelectField label="Run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
             </ActionCard>
             <ActionCard
@@ -1158,7 +1284,16 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 ))}
               </div>
               {editorMode === "guided" ? (
-                <div className="guided-grid">
+                <>
+                <div className="builder-section">
+                  <div>
+                    <p className="eyebrow">Mission Profile</p>
+                    <h3>Build a runnable scenario.</h3>
+                  </div>
+                  <button className="secondary-action preset-action" type="button" onClick={applyInterceptPreset}>
+                    Use Intercept Preset
+                  </button>
+                  <div className="guided-grid">
                   <TextField label="Name" value={asStringField(draft.name)} onChange={(value) => setScenarioText((text) => updateDraftValue(text, ["name"], value))} />
                   <TextField
                     label="Duration s"
@@ -1237,7 +1372,94 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                     value={String(asNumberField(draftEvents.load_limit_g, 15))}
                     onChange={(value) => setScenarioText((text) => updateDraftValue(text, ["events", "load_limit_g"], Number(value)))}
                   />
+                  </div>
                 </div>
+                <div className="builder-section">
+                  <div className="section-row">
+                    <div>
+                      <p className="eyebrow">Targets</p>
+                      <h3>Primary and decoy objects.</h3>
+                    </div>
+                    <button
+                      className="secondary-action"
+                      type="button"
+                      onClick={() =>
+                        setScenarioText((text) =>
+                          appendDraftArrayObject(text, ["targets"], {
+                            id: `target_${draftTargets.length + 1}`,
+                            label: `Target ${draftTargets.length + 1}`,
+                            role: draftTargets.length === 0 ? "primary" : "decoy",
+                            initial_position_m: [1200, 0, 900],
+                            velocity_mps: [-5, 0, 0]
+                          })
+                        )
+                      }
+                    >
+                      Add Target
+                    </button>
+                  </div>
+                  <div className="builder-card-grid">
+                    {(draftTargets.length ? draftTargets : [{ id: "primary_target", role: "primary", initial_position_m: [1450, 0, 1500], velocity_mps: [-8, 0, -1.5] }]).map((target, index) => (
+                      <div className="builder-card" key={`${asStringField(target.id, "target")}-${index}`}>
+                        <TextField label="ID" value={asStringField(target.id, `target_${index + 1}`)} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["targets"], index, "id", value))} />
+                        <label className="field">
+                          <span>Role</span>
+                          <select value={asStringField(target.role, index === 0 ? "primary" : "decoy")} onChange={(event) => setScenarioText((text) => updateDraftArrayObject(text, ["targets"], index, "role", event.target.value))}>
+                            <option value="primary">primary</option>
+                            <option value="decoy">decoy</option>
+                            <option value="waypoint">waypoint</option>
+                          </select>
+                        </label>
+                        <TextField label="X m" type="number" value={String(vectorValue(target.initial_position_m, 0, 1200))} onChange={(value) => setScenarioText((text) => updateDraftArrayVector(text, ["targets"], index, "initial_position_m", 0, Number(value)))} />
+                        <TextField label="Y m" type="number" value={String(vectorValue(target.initial_position_m, 1, 0))} onChange={(value) => setScenarioText((text) => updateDraftArrayVector(text, ["targets"], index, "initial_position_m", 1, Number(value)))} />
+                        <TextField label="Altitude m" type="number" value={String(vectorValue(target.initial_position_m, 2, 900))} onChange={(value) => setScenarioText((text) => updateDraftArrayVector(text, ["targets"], index, "initial_position_m", 2, Number(value)))} />
+                        <TextField label="VX m/s" type="number" value={String(vectorValue(target.velocity_mps, 0, 0))} onChange={(value) => setScenarioText((text) => updateDraftArrayVector(text, ["targets"], index, "velocity_mps", 0, Number(value)))} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="builder-section">
+                  <div className="section-row">
+                    <div>
+                      <p className="eyebrow">Interceptors</p>
+                      <h3>Kinematic launch objects.</h3>
+                    </div>
+                    <button
+                      className="secondary-action"
+                      type="button"
+                      onClick={() =>
+                        setScenarioText((text) =>
+                          appendDraftArrayObject(text, ["interceptors"], {
+                            id: `interceptor_${draftInterceptors.length + 1}`,
+                            target_id: asStringField(draftTargets[0]?.id, "primary_target"),
+                            launch_time_s: 2,
+                            initial_velocity_mps: [10, 0, 0],
+                            max_speed_mps: 280,
+                            max_accel_mps2: 90,
+                            guidance_gain: 2,
+                            proximity_fuze_m: 25
+                          })
+                        )
+                      }
+                    >
+                      Add Interceptor
+                    </button>
+                  </div>
+                  <div className="builder-card-grid">
+                    {(draftInterceptors.length ? draftInterceptors : []).map((interceptor, index) => (
+                      <div className="builder-card" key={`${asStringField(interceptor.id, "interceptor")}-${index}`}>
+                        <TextField label="ID" value={asStringField(interceptor.id, `interceptor_${index + 1}`)} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["interceptors"], index, "id", value))} />
+                        <TextField label="Target ID" value={asStringField(interceptor.target_id, asStringField(draftTargets[0]?.id, "primary_target"))} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["interceptors"], index, "target_id", value))} />
+                        <TextField label="Launch s" type="number" value={String(asNumberField(interceptor.launch_time_s, 2))} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["interceptors"], index, "launch_time_s", Number(value)))} />
+                        <TextField label="Max speed m/s" type="number" value={String(asNumberField(interceptor.max_speed_mps, 280))} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["interceptors"], index, "max_speed_mps", Number(value)))} />
+                        <TextField label="Max accel m/s2" type="number" value={String(asNumberField(interceptor.max_accel_mps2, 90))} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["interceptors"], index, "max_accel_mps2", Number(value)))} />
+                        <TextField label="Fuze m" type="number" value={String(asNumberField(interceptor.proximity_fuze_m, 25))} onChange={(value) => setScenarioText((text) => updateDraftArrayObject(text, ["interceptors"], index, "proximity_fuze_m", Number(value)))} />
+                      </div>
+                    ))}
+                    {draftInterceptors.length === 0 && <div className="empty-state">No interceptor configured. Add one for missile/intercept studies.</div>}
+                  </div>
+                </div>
+                </>
               ) : (
                 <TextAreaField label="JSON" value={scenarioText} onChange={setScenarioText} />
               )}
@@ -1265,6 +1487,11 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 <span>Drafts write under outputs/web_runs only</span>
                 <span>Example scenarios stay untouched</span>
                 <span>Config references must resolve inside examples</span>
+                <span>Raw JSON remains the expert mode</span>
+              </div>
+              <div className="scenario-explain">
+                <strong>Scenario summary</strong>
+                <p>{scenarioExplanation}</p>
               </div>
               {scenarioValidation && (
                 <>

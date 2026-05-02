@@ -63,7 +63,7 @@ class WebApiTests(unittest.TestCase):
 
             created = self.client.post(
                 "/api/runs",
-                json={"scenario_id": "nominal_ascent", "run_name": "api smoke"},
+                json={"scenario_id": "target_intercept", "run_name": "api smoke"},
             )
             self.assertEqual(created.status_code, 200)
             run_id = created.json()["id"]
@@ -74,8 +74,11 @@ class WebApiTests(unittest.TestCase):
             telemetry_payload = telemetry.json()
             self.assertGreater(len(telemetry_payload["history"]), 0)
             self.assertIn("target_range_m", telemetry_payload["channels"]["history"])
+            self.assertIn("interceptor_range_m", telemetry_payload["channels"]["history"])
+            self.assertGreater(len(telemetry_payload["interceptors"]), 0)
             self.assertEqual(telemetry_payload["metadata"]["target_range_m"]["display_name"], "Target Range")
             self.assertEqual(telemetry_payload["metadata"]["closing_speed_mps"]["group"], "Intercept")
+            self.assertEqual(telemetry_payload["metadata"]["interceptor_range_m"]["group"], "Interceptor")
         finally:
             api.WEB_RUNS_DIR = original
             shutil.rmtree(run_root, ignore_errors=True)
@@ -142,6 +145,7 @@ class WebApiTests(unittest.TestCase):
             names = {item["id"] for item in capabilities.json()}
             self.assertIn("monte_carlo", names)
             self.assertIn("linear_model_report", names)
+            self.assertIn("engagement_report", names)
 
             trim = self.client.post(
                 "/api/actions/trim",
@@ -202,8 +206,8 @@ class WebApiTests(unittest.TestCase):
                 self.assertEqual(api._find_run_dirs(), [])
 
                 (run_dir / "history.csv").write_text(
-                    "time_s,altitude_m,terrain_elevation_m,altitude_agl_m,altitude_agl_rate_mps,ground_contact,impact_speed_mps,target_range_m,closing_speed_mps\n"
-                    "0,10,2,8,-1,0,0,100,20\n"
+                    "time_s,altitude_m,terrain_elevation_m,altitude_agl_m,altitude_agl_rate_mps,ground_contact,impact_speed_mps,target_range_m,closing_speed_mps,interceptor_range_m\n"
+                    "0,10,2,8,-1,0,0,100,20,50\n"
                 )
                 self.assertTrue(api._seed_suite_ready())
                 self.assertEqual(api._find_run_dirs(), [run_dir])

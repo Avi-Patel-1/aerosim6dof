@@ -12,6 +12,7 @@ from aerosim6dof.analysis.aero import aero_sweep, inspect_aero
 from aerosim6dof.analysis.compare import compare_histories
 from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, inspect_vehicle
 from aerosim6dof.analysis.environment import environment_report
+from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
 from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
@@ -341,12 +342,26 @@ class FlightSimTests(unittest.TestCase):
             target_header = (out / "targets.csv").read_text().splitlines()[0]
             self.assertIn("target_id", target_header)
             self.assertIn("target_range_rate_mps", target_header)
+            self.assertTrue((out / "interceptors.csv").exists())
+            interceptor_header = (out / "interceptors.csv").read_text().splitlines()[0]
+            self.assertIn("interceptor_id", interceptor_header)
+            self.assertIn("interceptor_range_m", interceptor_header)
+            self.assertIn("interceptor_closing_speed_mps", interceptor_header)
             events = json.loads((out / "events.json").read_text())
             self.assertTrue(any(event["type"] == "closest_approach" for event in events))
+            self.assertTrue(any(event["type"] == "interceptor_launch" for event in events))
+            self.assertTrue(any(event["type"] == "interceptor_closest_approach" for event in events))
             self.assertIsNotNone(summary["min_target_range_m"])
             self.assertIsNotNone(summary["max_closing_speed_mps"])
+            self.assertIsNotNone(summary["min_interceptor_range_m"])
             manifest = json.loads((out / "manifest.json").read_text())
             self.assertIn("targets.csv", manifest["files"])
+            self.assertIn("interceptors.csv", manifest["files"])
+            self.assertIn("engagement_report.html", manifest["files"])
+            engagement = engagement_report(out)
+            self.assertEqual(engagement["target_count"], 2)
+            self.assertEqual(engagement["interceptor_count"], 1)
+            self.assertTrue((out / "engagement_report.html").exists())
 
     def test_compare_trim_and_linearize(self):
         scenario = Scenario.from_file(ROOT / "examples/scenarios/nominal_ascent.json")

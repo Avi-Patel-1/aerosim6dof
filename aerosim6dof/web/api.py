@@ -23,6 +23,7 @@ from aerosim6dof.analysis.alarms import evaluate_run_alarms
 from aerosim6dof.analysis.compare import compare_histories
 from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, inspect_vehicle
 from aerosim6dof.analysis.environment import environment_report
+from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
 from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
@@ -76,6 +77,7 @@ REQUIRED_HISTORY_COLUMNS = {
     "impact_speed_mps",
     "target_range_m",
     "closing_speed_mps",
+    "interceptor_range_m",
 }
 
 CAPABILITIES = [
@@ -86,6 +88,7 @@ CAPABILITIES = [
     {"id": "fault_campaign", "group": "campaign", "label": "Fault Campaign", "faults": sorted(FAULT_LIBRARY)},
     {"id": "compare_runs", "group": "analysis", "label": "Compare"},
     {"id": "report", "group": "analysis", "label": "Report"},
+    {"id": "engagement_report", "group": "analysis", "label": "Engagement"},
     {"id": "sensor_report", "group": "analysis", "label": "Sensor Report"},
     {"id": "trim", "group": "engineering", "label": "Trim"},
     {"id": "trim_sweep", "group": "engineering", "label": "Trim Sweep"},
@@ -319,7 +322,7 @@ def get_telemetry(run_id: str, stride: int = Query(1, ge=1, le=5000)) -> Telemet
     datasets: dict[str, list[dict[str, Any]]] = {}
     channels: dict[str, list[str]] = {}
     sample_count = 0
-    for name in ("history", "truth", "controls", "sensors", "targets"):
+    for name in ("history", "truth", "controls", "sensors", "targets", "interceptors"):
         path = run_dir / f"{name}.csv"
         if not path.exists():
             datasets[name] = []
@@ -406,6 +409,10 @@ def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:
         run_dir = _run_dir_from_id(str(params["run_id"]))
         report_path = report_run(run_dir)
         return _action_result(action, run_dir, {"report": str(report_path)})
+    if action == "engagement_report":
+        run_dir = _run_dir_from_id(str(params["run_id"]))
+        data = engagement_report(run_dir)
+        return _action_result(action, run_dir, data)
     if action == "sensor_report":
         run_dir = _run_dir_from_id(str(params["run_id"]))
         out = _action_dir("sensor_report", run_dir.name)
@@ -521,7 +528,7 @@ def _job_update(
 def _action_stage(action: str) -> str:
     if action in {"run", "batch", "monte_carlo", "sweep", "fault_campaign"}:
         return "running simulation"
-    if action in {"compare_runs", "report", "sensor_report", "aero_report", "thrust_curve_report", "environment_report"}:
+    if action in {"compare_runs", "report", "engagement_report", "sensor_report", "aero_report", "thrust_curve_report", "environment_report"}:
         return "building report"
     if action in {"trim", "trim_sweep", "linearize", "stability", "linear_model_report"}:
         return "solving engineering model"
@@ -749,6 +756,7 @@ def _list_artifacts(run_id: str, run_dir: Path) -> list[ArtifactRef]:
         "controls.csv",
         "sensors.csv",
         "targets.csv",
+        "interceptors.csv",
         "summary.json",
         "manifest.json",
         "events.json",

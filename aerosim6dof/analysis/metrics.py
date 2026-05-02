@@ -15,6 +15,7 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
     min_target_distance = min_target_range
     if min_target_distance is None:
         min_target_distance = miss_value if miss_value is not None else _finite_min([r.get("target_distance_m") for r in rows])
+    min_interceptor_range = _finite_min([r.get("interceptor_range_m") for r in rows])
     return {
         "scenario": scenario_name,
         "samples": len(rows),
@@ -33,6 +34,9 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
             "target_id": final.get("target_id"),
             "target_range_m": _finite_float(final.get("target_range_m")),
             "closing_speed_mps": _finite_float(final.get("closing_speed_mps")),
+            "interceptor_id": final.get("interceptor_id"),
+            "interceptor_range_m": _finite_float(final.get("interceptor_range_m")),
+            "interceptor_fuzed": _finite_float(final.get("interceptor_fuzed")),
         },
         "max_altitude_m": max(float(r["altitude_m"]) for r in rows),
         "min_altitude_agl_m": _finite_min([r.get("altitude_agl_m") for r in rows]),
@@ -45,6 +49,9 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
         "min_target_distance_m": min_target_distance,
         "min_target_range_m": min_target_range,
         "max_closing_speed_mps": _finite_max([r.get("closing_speed_mps") for r in rows]),
+        "min_interceptor_range_m": min_interceptor_range,
+        "max_interceptor_closing_speed_mps": _finite_max([r.get("interceptor_closing_speed_mps") for r in rows]),
+        "interceptor_fuze_count": sum(1 for event in events if event.get("type") == "interceptor_fuze"),
         "event_count": len(events),
     }
 

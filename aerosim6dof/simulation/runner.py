@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 from aerosim6dof.analysis.metrics import summarize
+from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.config import load_json
 from aerosim6dof.core.integration import adaptive_rk45_step, rk2_step, rk4_step
 from aerosim6dof.core.quaternions import from_euler, normalize
@@ -37,6 +38,7 @@ from aerosim6dof.vehicle.state import VehicleState
 from .contact import GroundContactModel, ground_contact_config
 from .dynamics import DynamicsModel
 from .events import EventDetector
+from .interceptors import InterceptorSuite
 from .logger import build_rows
 from .monte_carlo_hooks import perturb_scenario
 from .targets import TargetSuite
@@ -51,6 +53,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     terrain: TerrainModel = components["terrain"]
     contact_model: GroundContactModel = components["contact"]
     targets: TargetSuite = components["targets"]
+    interceptors: InterceptorSuite = components["interceptors"]
     dynamics: DynamicsModel = components["dynamics"]
     guidance_model: GuidanceModel = components["guidance"]
     autopilot: Autopilot = components["autopilot"]
@@ -63,6 +66,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     control_rows: list[dict[str, Any]] = []
     sensor_rows: list[dict[str, Any]] = []
     target_rows: list[dict[str, Any]] = []
+    interceptor_rows: list[dict[str, Any]] = []
     controls_eff: dict[str, float] = {"elevator": 0.0, "aileron": 0.0, "rudder": 0.0, "throttle": 0.0}
     steps = int(math.floor(scenario.duration / scenario.dt)) + 1
     for step in range(steps):
@@ -94,7 +98,11 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
             },
         )
         target_state, target_samples = targets.sample(t, state.position_m, state.velocity_mps)
+        interceptor_state, interceptor_samples, interceptor_events = interceptors.step(t, scenario.dt, state.position_m, state.velocity_mps, target_samples)
         target_rows.extend(target_samples)
+        interceptor_rows.extend(interceptor_samples)
+        for event in interceptor_events:
+            detector.add(event)
         history, truth, controls, sensor_row = build_rows(
             t,
             state,
@@ -108,6 +116,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
             altitude_agl_m=terrain_state["altitude_agl_m"],
             contact_state=contact_state,
             target_state=target_state,
+            interceptor_state=interceptor_state,
         )
         history_rows.append(history)
         truth_rows.append(truth)
@@ -120,9 +129,11 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
         state, _contact_action = contact_model.apply(state, terrain)
         if terrain.above_ground(state.position_m) < -50.0:
             break
+    for event in interceptors.finalize_events():
+        detector.add(event)
     events = detector.finalize()
     summary = summarize(history_rows, events, scenario.name)
-    _write_artifacts(out, scenario, summary, events, history_rows, truth_rows, control_rows, sensor_rows, target_rows)
+    _write_artifacts(out, scenario, summary, events, history_rows, truth_rows, control_rows, sensor_rows, target_rows, interceptor_rows)
     return summary
 
 
@@ -255,6 +266,7 @@ def _build_components(scenario: Scenario) -> dict[str, Any]:
         "terrain": TerrainModel(scenario.environment.get("terrain", {})),
         "contact": GroundContactModel(ground_contact_config(scenario)),
         "targets": TargetSuite.from_scenario(scenario),
+        "interceptors": InterceptorSuite.from_scenario(scenario),
         "guidance": GuidanceModel(scenario.guidance),
         "autopilot": Autopilot({**scenario.guidance.get("autopilot", {}), **scenario.autopilot}),
         "navigation": NavigationHook(str(scenario.guidance.get("navigation", scenario.sensors.get("navigation", "truth")))),
@@ -324,6 +336,7 @@ def _write_artifacts(
     controls: list[dict[str, Any]],
     sensors: list[dict[str, Any]],
     targets: list[dict[str, Any]],
+    interceptors: list[dict[str, Any]],
 ) -> None:
     write_csv(out / "history.csv", history)
     write_csv(out / "truth.csv", truth)
@@ -333,11 +346,18 @@ def _write_artifacts(
     if targets:
         write_csv(out / "targets.csv", targets)
         target_files.append("targets.csv")
+    if interceptors:
+        write_csv(out / "interceptors.csv", interceptors)
+        target_files.append("interceptors.csv")
     write_json(out / "events.json", events)
     write_json(out / "summary.json", summary)
     write_json(out / "scenario_resolved.json", scenario.raw)
     plots = _generate_plots(out, history)
     write_report(out, summary, events, plots)
+    engagement_files: list[str] = []
+    if targets or interceptors:
+        engagement_report(out)
+        engagement_files.extend(["engagement_report.html", "engagement_report.json"])
     write_json(
         out / "manifest.json",
         {
@@ -358,6 +378,7 @@ def _write_artifacts(
                 "summary.json",
                 "scenario_resolved.json",
                 "report.html",
+                *engagement_files,
                 *[str(p.relative_to(out)) for p in plots],
             ],
         },
@@ -397,6 +418,7 @@ def _generate_plots(out: Path, rows: list[dict[str, Any]]) -> list[Path]:
         ("28_agl_terrain.svg", "time", ["altitude_m", "terrain_elevation_m", "altitude_agl_m"], "Terrain/AGL", "altitude (m)"),
         ("29_ground_contact.svg", "time", ["ground_contact", "impact_speed_mps", "altitude_agl_rate_mps"], "Ground Contact", "contact"),
         ("30_target_kinematics.svg", "time", ["target_range_m", "closing_speed_mps", "target_range_rate_mps"], "Target Kinematics", "target"),
+        ("31_interceptor_kinematics.svg", "time", ["interceptor_range_m", "interceptor_closing_speed_mps", "interceptor_time_to_go_s"], "Interceptor Kinematics", "interceptor"),
     ]
     paths: list[Path] = []
     for filename, mode, keys, title, label in specs:

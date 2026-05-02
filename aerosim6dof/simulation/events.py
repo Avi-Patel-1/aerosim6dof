@@ -92,6 +92,9 @@ class EventDetector:
         self._add(self.max_altitude_time_s, "max_altitude", f"Maximum altitude was {self.max_altitude_m:.2f} m.")
         return sorted(self.events, key=lambda e: float(e["time_s"]))
 
+    def add(self, event: dict[str, Any]) -> None:
+        self.events.append(dict(event))
+
     def _add(self, t: float, event_type: str, description: str, **extra: Any) -> None:
         self.events.append({"time_s": float(t), "type": event_type, "description": description, **extra})
 

@@ -19,6 +19,8 @@ class TargetObject:
     target_id: str
     initial_position_m: np.ndarray
     velocity_mps: np.ndarray
+    role: str = "primary"
+    label: str = ""
     start_s: float = 0.0
     end_s: float = 1e99
 
@@ -54,6 +56,8 @@ class TargetSuite:
                     target_id=str(guidance.get("target_id", "guidance_target")),
                     initial_position_m=vec3(guidance.get("target_position_m"), (1000.0, 0.0, 0.0)),
                     velocity_mps=vec3(guidance.get("target_velocity_mps"), (0.0, 0.0, 0.0)),
+                    role="primary",
+                    label=str(guidance.get("target_id", "Guidance Target")),
                     start_s=0.0,
                     end_s=1e99,
                 )
@@ -74,6 +78,9 @@ class TargetSuite:
             row = {
                 "time_s": float(t),
                 "target_id": target.target_id,
+                "target_label": target.label or target.target_id,
+                "target_role": target.role,
+                "target_primary": 1.0 if target.role == "primary" else 0.0,
                 "target_active": 1.0 if active else 0.0,
                 "target_x_m": float(position[0]),
                 "target_y_m": float(position[1]),
@@ -99,6 +106,9 @@ class TargetSuite:
             return {
                 "target_count": float(len(self.targets)),
                 "target_id": "",
+                "target_label": "",
+                "target_role": "",
+                "target_primary": 0.0,
                 "target_active": 0.0,
                 "target_x_m": nan,
                 "target_y_m": nan,
@@ -130,6 +140,8 @@ def _target_from_config(config: dict[str, Any], index: int) -> TargetObject | No
             target_id=str(config.get("id", config.get("name", f"target_{index + 1}"))),
             initial_position_m=vec3(config.get("position_m", config.get("initial_position_m")), (0.0, 0.0, 0.0)),
             velocity_mps=vec3(config.get("velocity_mps"), (0.0, 0.0, 0.0)),
+            role=str(config.get("role", "primary" if index == 0 else "decoy")),
+            label=str(config.get("label", config.get("id", config.get("name", f"Target {index + 1}")))),
             start_s=_finite(config.get("start_s"), 0.0),
             end_s=_finite(config.get("end_s"), 1e99),
         )

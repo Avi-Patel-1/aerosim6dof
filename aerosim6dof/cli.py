@@ -11,6 +11,7 @@ from aerosim6dof.analysis.aero import aero_report, aero_sweep, inspect_aero
 from aerosim6dof.analysis.compare import compare_histories
 from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, inspect_vehicle
 from aerosim6dof.analysis.environment import environment_report
+from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
 from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
@@ -121,6 +122,10 @@ def main(argv: list[str] | None = None) -> None:
     sensor_report_cmd.add_argument("--run", required=True)
     sensor_report_cmd.add_argument("--out", default="")
 
+    engagement_report_cmd = sub.add_parser("engagement-report", help="Build target/interceptor engagement metrics and plots from a run directory.")
+    engagement_report_cmd.add_argument("--run", required=True)
+    engagement_report_cmd.add_argument("--out", default="")
+
     sweep_cmd = sub.add_parser("sweep", help="Run a Cartesian parameter sweep campaign.")
     sweep_cmd.add_argument("--scenario", required=True)
     sweep_cmd.add_argument("--out", required=True)
@@ -188,6 +193,8 @@ def main(argv: list[str] | None = None) -> None:
             result = environment_report(args.environment, args.out)
         elif args.command == "sensor-report":
             result = sensor_report(args.run, args.out or None)
+        elif args.command == "engagement-report":
+            result = engagement_report(args.run, args.out or None)
         elif args.command == "sweep":
             result = run_sweep_campaign(Scenario.from_file(args.scenario), args.out, _parse_sweep(args.set), args.max_runs)
         elif args.command == "fault-campaign":

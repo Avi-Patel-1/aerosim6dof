@@ -113,6 +113,7 @@ def validate_scenario(scenario: Scenario) -> list[str]:
             value = _finite_number(f"events.{key}", scenario.events[key], errors)
             if value is not None and value <= 0.0:
                 errors.append(f"events.{key} must be positive")
+    _validate_engagement_objects(scenario.raw, errors)
     _validate_sensor_rates(scenario.sensors, errors)
     _validate_sensor_faults(scenario.sensors, errors)
     if errors:
@@ -209,3 +210,36 @@ def _validate_sensor_faults(config: dict[str, Any], errors: list[str]) -> None:
         end = _finite_number(f"sensors.faults[{idx}].end_s", fault.get("end_s", 1e99), errors)
         if start is not None and end is not None and end < start:
             errors.append(f"sensors.faults[{idx}].end_s must be >= start_s")
+
+
+def _validate_engagement_objects(config: dict[str, Any], errors: list[str]) -> None:
+    targets = config.get("targets", [])
+    if targets not in (None, []) and not isinstance(targets, list):
+        errors.append("targets must be a list")
+    if isinstance(targets, list):
+        for idx, target in enumerate(targets):
+            if not isinstance(target, dict):
+                errors.append(f"targets[{idx}] must be an object")
+                continue
+            if "initial_position_m" in target:
+                _vector3(f"targets[{idx}].initial_position_m", target["initial_position_m"], errors)
+            if "position_m" in target:
+                _vector3(f"targets[{idx}].position_m", target["position_m"], errors)
+            if "velocity_mps" in target:
+                _vector3(f"targets[{idx}].velocity_mps", target["velocity_mps"], errors)
+    interceptors = config.get("interceptors", [])
+    if interceptors not in (None, []) and not isinstance(interceptors, list):
+        errors.append("interceptors must be a list")
+    if isinstance(interceptors, list):
+        for idx, interceptor in enumerate(interceptors):
+            if not isinstance(interceptor, dict):
+                errors.append(f"interceptors[{idx}] must be an object")
+                continue
+            for key in ("initial_position_m", "position_m", "initial_velocity_mps", "velocity_mps"):
+                if key in interceptor:
+                    _vector3(f"interceptors[{idx}].{key}", interceptor[key], errors)
+            for key in ("launch_time_s", "max_speed_mps", "max_accel_mps2", "guidance_gain", "proximity_fuze_m"):
+                if key in interceptor:
+                    value = _finite_number(f"interceptors[{idx}].{key}", interceptor[key], errors)
+                    if value is not None and value < 0.0:
+                        errors.append(f"interceptors[{idx}].{key} cannot be negative")

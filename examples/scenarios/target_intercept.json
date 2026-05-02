@@ -17,13 +17,29 @@
   "targets": [
     {
       "id": "primary_target",
+      "label": "Primary target",
+      "role": "primary",
       "initial_position_m": [1450.0, 0.0, 1500.0],
       "velocity_mps": [-8.0, 0.0, -1.5]
     },
     {
       "id": "offset_reference",
+      "label": "Offset reference",
+      "role": "decoy",
       "initial_position_m": [1300.0, 170.0, 1380.0],
       "velocity_mps": [-4.0, -2.0, 0.0]
+    }
+  ],
+  "interceptors": [
+    {
+      "id": "range_defender_1",
+      "target_id": "primary_target",
+      "launch_time_s": 2.0,
+      "initial_velocity_mps": [10.0, 0.0, 0.0],
+      "max_speed_mps": 280.0,
+      "max_accel_mps2": 90.0,
+      "guidance_gain": 2.1,
+      "proximity_fuze_m": 25.0
     }
   ],
   "events": {

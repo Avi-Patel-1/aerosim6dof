@@ -141,6 +141,7 @@ export type TelemetrySeries = {
   controls: TelemetryRow[];
   sensors: TelemetryRow[];
   targets: TelemetryRow[];
+  interceptors: TelemetryRow[];
   metadata?: Record<string, TelemetryChannelMetadata>;
 };
 
@@ -150,6 +151,6 @@ export type ReplayHandoff = {
   telemetry: TelemetrySeries;
   index: number;
   environmentMode: "range" | "coast" | "night";
-  cameraMode: "chase" | "orbit" | "cockpit" | "map";
+  cameraMode: "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
   playing: boolean;
 };

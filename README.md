@@ -37,14 +37,15 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 | **Replay** | Shows the 3D flight replay, current metrics, event timeline, telemetry charts, and artifact links for a selected run. |
 | **Run selector** | Switches between preloaded scenarios and newly generated runs. Fresh deployments preload the packaged scenario suite. |
 | **Range / Coast / Night** | Changes the replay environment style so the same trajectory can be inspected in different visual contexts. |
-| **Chase / Orbit / Cockpit / Map** | Changes the camera mode for following, inspecting, riding with, or mapping the vehicle path. |
+| **Chase / Orbit / Cockpit / Map / Range Safety** | Changes the camera mode for following, inspecting, riding with, mapping, or reviewing the engagement geometry from a range-safety perspective. |
 | **Play / Loop** | Starts or stops replay playback. |
 | **Scrubber** | Moves to an exact telemetry sample in the run. Charts and 3D pose update together. |
 | **0.5x / 1x / 2x / 4x** | Changes replay speed. |
-| **Trail / Axes / Wind** | Toggles trajectory history, body axes, and wind visualization overlays. |
+| **Trail / Axes / Wind / Velocity / Accel / Sensors** | Toggles trajectory history, body axes, wind, velocity, acceleration, and sensor-frustum visualization overlays. |
+| **Trail Color** | Colors the replay trail by speed, qbar, load factor, altitude, or a plain trace. |
 | **Telemetry flight / controls / sensors** | Switches chart data between vehicle motion, actuator/control behavior, and sensor outputs. |
 | **Add channel** | Adds another telemetry channel to the chart for comparison. Clicking a channel chip removes it. |
-| **Launch** | Validates scenarios, runs selected scenarios, compares two runs, builds reports, and creates sensor reports. |
+| **Launch** | Validates scenarios, runs selected scenarios, compares two runs, builds reports, creates sensor reports, and generates engagement reports. |
 | **Campaigns** | Runs batches, Monte Carlo dispersions, parameter sweeps, and fault campaigns. |
 | **Engineering** | Runs trim, trim sweeps, linearization, stability analysis, and linear-model reports. |
 | **Models** | Inspects vehicle configs, compares vehicles, generates scenario templates, and creates aero, propulsion, and environment reports. |
@@ -58,7 +59,8 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 - **Robustness testing:** use **Campaigns** for Monte Carlo samples, parameter sweeps, or fault campaigns to see how sensitive a configuration is.
 - **Control and stability checks:** use **Engineering** to trim a vehicle, sweep trim points, linearize a scenario, and inspect stability outputs.
 - **Model inspection:** use **Models** to review vehicle, aerodynamic, propulsion, and environment assumptions before trusting a run.
-- **New scenario drafting:** use **Editor** to start from a packaged scenario, adjust duration, initial state, vehicle, environment, guidance, sensors, and event limits, then validate and run the draft.
+- **Intercept studies:** use **Editor** to add primary and decoy targets plus interceptor definitions, then replay target labels, miss-distance markers, interceptor geometry, and engagement reports.
+- **New scenario drafting:** use **Editor** to start from a packaged scenario, adjust duration, initial state, vehicle, environment, guidance, sensors, target/interceptor objects, and event limits, then validate and run the draft.
 
 ## Quick Start
 
@@ -102,6 +104,7 @@ python3 -m aerosim6dof aero-report --vehicle examples/vehicles/baseline.json --o
 python3 -m aerosim6dof thrust-curve-report --vehicle examples/vehicles/baseline.json --out outputs/propulsion_report
 python3 -m aerosim6dof environment-report --environment examples/environments/gusted_range.json --out outputs/environment_report
 python3 -m aerosim6dof sensor-report --run outputs/nominal_expanded
+python3 -m aerosim6dof engagement-report --run outputs/target_intercept
 python3 -m aerosim6dof sweep --scenario examples/scenarios/nominal_ascent.json --set guidance.throttle=0.82,0.86 --out outputs/throttle_sweep
 python3 -m aerosim6dof fault-campaign --scenario examples/scenarios/nominal_ascent.json --out outputs/fault_campaign
 ```
@@ -112,12 +115,13 @@ The web interface provides a full simulator workbench around the existing Python
 
 - Landing page with a live replay preview in the command-center monitor
 - 3D replay scene with range, coast, and night environments
-- Chase, orbit, cockpit, and map camera modes
-- Playback scrubber, speed controls, trail, axes, and wind overlays
+- Chase, orbit, cockpit, map, and range-safety camera modes
+- Playback scrubber, speed controls, colored trails, axes, wind, velocity, acceleration, sensor, terrain, target, and interceptor overlays
 - Run browser with summary metrics, event timeline, and artifact links
 - Telemetry charts for flight, controls, and sensor channels
 - Scenario validation, run creation, batch, Monte Carlo, sweep, fault-campaign, trim, linearization, stability, model inspection, and report workflows
-- Guarded scenario editor with guided fields and raw JSON editing
+- Engagement reports for target/interceptor runs
+- Guarded scenario editor with guided mission, target, interceptor, and raw JSON editing
 
 Install the optional web dependencies:
 
@@ -190,11 +194,14 @@ Each run directory contains:
 - `truth.csv`: state, atmosphere, wind, aerodynamic, propulsion, and energy channels
 - `controls.csv`: commands, achieved deflections, throttle, saturation, and failure flags
 - `sensors.csv`: IMU, GPS, barometer, pitot/static, and magnetometer measurements
+- `targets.csv`: target object kinematics, labels, roles, range, range-rate, and closest-approach channels when a scenario includes targets
+- `interceptors.csv`: interceptor launch/fuze state, target assignment, range, closing speed, and best-miss channels when a scenario includes interceptors
 - `events.json`: burnout, apogee, qbar/load exceedance, actuator saturation, target crossing, ground impact, and max-altitude events
 - `summary.json`: final state and envelope metrics
 - `scenario_resolved.json`: scenario after inheritance and config merges
 - `manifest.json`: version, run settings, sample count, and artifact inventory
 - `report.html`: self-contained run report linking the SVG plots
+- `engagement_report.html`: target/interceptor engagement summary for runs with engagement objects
 - `plots/*.svg`: a rich set of trajectory, attitude, loads, controls, sensor, and envelope plots
 
 Batch and Monte Carlo runs additionally write aggregate index CSV files and HTML dashboards:
