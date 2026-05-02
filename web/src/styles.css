@@ -649,9 +649,9 @@ svg {
 }
 
 .workbench.sim-mode .workbench-scroll {
-  width: min(calc(100vw - 32px), 1500px);
-  gap: 28px;
-  padding-top: 22px;
+  width: min(calc(100vw - 64px), 1380px);
+  gap: 24px;
+  padding-top: 18px;
 }
 
 .workbench.sim-mode .console-overview {
@@ -663,7 +663,7 @@ svg {
 }
 
 .workbench.sim-mode .replay-stage {
-  min-height: calc(100vh - 150px);
+  min-height: clamp(590px, calc((100vh - 216px) * var(--replay-scale, 0.92)), 800px);
 }
 
 .workbench.sim-mode .stage-header {
@@ -676,7 +676,7 @@ svg {
 }
 
 .workbench.sim-mode .replay-canvas {
-  min-height: clamp(620px, calc(100vh - 288px), 900px);
+  min-height: clamp(430px, calc((100vh - 382px) * var(--replay-scale, 0.92)), 660px);
 }
 
 .console-overview {
@@ -785,12 +785,28 @@ svg {
 }
 
 .replay-stage {
+  --replay-scale: 0.92;
   min-height: min(820px, calc(100vh - 154px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-top: 0;
   border-bottom: 0;
+}
+
+.replay-stage.is-expanded {
+  position: fixed;
+  inset: 16px;
+  z-index: 90;
+  height: calc(100vh - 32px);
+  min-height: 0;
+  padding: 22px 28px;
+  background: var(--color-deep-space);
+  box-shadow: 0 0 0 1px rgba(112, 112, 125, 0.45), 0 28px 80px rgba(0, 0, 0, 0.48);
+}
+
+.replay-stage.is-expanded .replay-canvas {
+  min-height: 0;
 }
 
 .stage-header {
@@ -817,6 +833,48 @@ svg {
   flex-wrap: wrap;
 }
 
+.viewer-tools {
+  min-height: 42px;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: auto;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(112, 112, 125, 0.42);
+  border-radius: 40px;
+  padding: 4px;
+  background: rgba(23, 23, 33, 0.56);
+}
+
+.viewer-tools button {
+  min-width: 34px;
+  min-height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 40px;
+  color: var(--color-starlight);
+  background: transparent;
+  padding: 0 8px;
+}
+
+.viewer-tools button:hover:not(:disabled) {
+  background: rgba(205, 221, 255, 0.18);
+}
+
+.viewer-tools button:disabled {
+  color: var(--color-lead);
+  cursor: default;
+}
+
+.viewer-tools span {
+  min-width: 46px;
+  color: var(--color-silver);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.78rem;
+  text-align: center;
+}
+
 .replay-canvas {
   width: 100%;
   min-height: 520px;
@@ -835,7 +893,7 @@ svg {
 }
 
 .scrubber {
-  min-height: 76px;
+  min-height: 68px;
   display: grid;
   grid-template-columns: auto 1fr auto auto;
   align-items: center;
@@ -1858,12 +1916,12 @@ pre {
 
   .workbench.sim-mode .workbench-scroll {
     width: min(calc(100vw - 22px), var(--page-max));
-    gap: 28px;
-    padding-top: 18px;
+    gap: 24px;
+    padding-top: 12px;
   }
 
   .workbench.sim-mode .replay-stage {
-    min-height: calc(100vh - 28px);
+    min-height: auto;
   }
 
   .console-overview {
@@ -1915,16 +1973,30 @@ pre {
   }
 
   .workbench.sim-mode .replay-canvas {
-    min-height: 520px;
+    min-height: clamp(220px, calc((100vh - 590px) * var(--replay-scale, 0.92)), 280px);
   }
 
-  .scrubber,
+  .scrubber {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .scrubber .speed-strip,
+  .scrubber > span {
+    grid-column: 1 / -1;
+  }
+
+  .scrubber > span {
+    justify-self: center;
+  }
+
   .replay-side {
     grid-template-columns: 1fr;
   }
 
   .mini-segment,
-  .speed-strip {
+  .speed-strip,
+  .viewer-tools {
     width: 100%;
     grid-auto-columns: minmax(0, 1fr);
   }

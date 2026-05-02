@@ -11,6 +11,8 @@ import {
   Home,
   Layers3,
   Loader2,
+  Maximize2,
+  Minimize2,
   Pause,
   Play,
   RadioTower,
@@ -21,9 +23,11 @@ import {
   Settings2,
   ShieldAlert,
   Sparkles,
-  TerminalSquare
+  TerminalSquare,
+  ZoomIn,
+  ZoomOut
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
   createScenarioDraft,
   getCapabilities,
@@ -71,8 +75,17 @@ const DEFAULT_CHANNELS: Record<ChartMode, string[]> = {
   sensors: ["pitot_airspeed_mps", "baro_alt_m", "gps_z_m", "radar_agl_m"]
 };
 
+const REPLAY_SCALE_MIN = 0.88;
+const REPLAY_SCALE_MAX = 1.04;
+const REPLAY_SCALE_STEP = 0.04;
+const DEFAULT_REPLAY_SCALE = 0.92;
+
 function numeric(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 function formatMetric(value: unknown, unit = "", digits = 1): string {
@@ -278,6 +291,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [environmentMode, setEnvironmentMode] = useState<EnvironmentMode>(initialHandoff?.environmentMode ?? "range");
   const [cameraMode, setCameraMode] = useState<CameraMode>(initialHandoff?.cameraMode ?? "chase");
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [replayScale, setReplayScale] = useState(DEFAULT_REPLAY_SCALE);
+  const [replayFullscreen, setReplayFullscreen] = useState(false);
   const [showTrail, setShowTrail] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
   const [showWind, setShowWind] = useState(false);
@@ -695,11 +710,20 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     setCurrentIndex(nearestIndex);
   };
 
+  const adjustReplayScale = (delta: number) => {
+    setReplayScale((value) => Number(clamp(value + delta, REPLAY_SCALE_MIN, REPLAY_SCALE_MAX).toFixed(2)));
+  };
+
+  const toggleReplayFullscreen = async () => {
+    setReplayFullscreen((value) => !value);
+  };
+
   const final = summaryFinal(runDetail);
   const currentRow = telemetry?.history[currentIndex];
   const chartRow = chartRows[Math.min(currentIndex, Math.max(chartRows.length - 1, 0))];
   const activeAlarms = activeAlarmCount(alarms);
   const activeParameterKey = chartChannels.includes(inspectedChannel) ? inspectedChannel : chartChannels[0];
+  const replayStageStyle = { "--replay-scale": replayScale } as CSSProperties;
   const reportArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "report" || artifact.kind === "plot").slice(0, 8) ?? [];
   const dataArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "csv" || artifact.kind === "json").slice(0, 8) ?? [];
   const latestResult = results[0];
@@ -786,7 +810,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
 
         {activeTab === "replay" && (
           <div className="replay-layout">
-            <section className="replay-stage">
+            <section className={`replay-stage ${replayFullscreen ? "is-expanded" : ""}`} style={replayStageStyle}>
               <div className="stage-header">
                 <div>
                   <p>{runDetail?.scenario ?? "No run selected"}</p>
@@ -811,6 +835,18 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                     {playing ? <RotateCcw size={18} /> : <Play size={18} />}
                     {playing ? "Loop" : "Play"}
                   </button>
+                  <div className="viewer-tools" aria-label="Replay viewport controls">
+                    <button type="button" aria-label="Shrink replay viewport" onClick={() => adjustReplayScale(-REPLAY_SCALE_STEP)} disabled={replayScale <= REPLAY_SCALE_MIN}>
+                      <ZoomOut size={16} />
+                    </button>
+                    <span>{Math.round(replayScale * 100)}%</span>
+                    <button type="button" aria-label="Enlarge replay viewport" onClick={() => adjustReplayScale(REPLAY_SCALE_STEP)} disabled={replayScale >= REPLAY_SCALE_MAX}>
+                      <ZoomIn size={16} />
+                    </button>
+                    <button type="button" aria-label={replayFullscreen ? "Exit replay fullscreen" : "Open replay fullscreen"} onClick={toggleReplayFullscreen}>
+                      {replayFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
               <ReplayScene
