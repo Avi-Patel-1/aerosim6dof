@@ -64,6 +64,7 @@ EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="aerosim-web")
 JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 SEED_LOCK = threading.Lock()
+SEED_SUITE_STARTED = False
 
 CAPABILITIES = [
     {"id": "run", "group": "launch", "label": "Run"},
@@ -595,9 +596,10 @@ def _environment_path(environment_id: str) -> Path:
 
 def _discover_run_dirs() -> list[Path]:
     run_dirs = _find_run_dirs()
-    if not run_dirs or (_seed_suite_dir().exists() and not _seed_suite_ready()):
-        _ensure_seed_run()
+    if not run_dirs:
+        _ensure_minimum_seed_run()
         run_dirs = _find_run_dirs()
+    _ensure_seed_suite_background()
     return run_dirs
 
 
@@ -607,28 +609,45 @@ def _find_run_dirs() -> list[Path]:
     run_dirs = []
     for summary_path in OUTPUTS_DIR.rglob("summary.json"):
         run_dir = summary_path.parent
+        if _seed_suite_ready() and run_dir.resolve() == (WEB_RUNS_DIR / "nominal_ascent_seed").resolve():
+            continue
         if (run_dir / "history.csv").exists():
             run_dirs.append(run_dir)
     return run_dirs
 
 
-def _ensure_seed_run() -> None:
+def _ensure_minimum_seed_run() -> None:
     with SEED_LOCK:
-        if _seed_suite_ready():
+        if _find_run_dirs():
             return
-        if not SCENARIOS_DIR.exists():
+        scenario_path = SCENARIOS_DIR / "nominal_ascent.json"
+        if not scenario_path.exists():
             return
         try:
-            result = batch_run(SCENARIOS_DIR, _seed_suite_dir())
-            write_json(_seed_suite_marker(), {"generated_at_utc": _utc_now(), "scenario_count": result.get("count", 0)})
+            run_scenario(Scenario.from_file(scenario_path), WEB_RUNS_DIR / "nominal_ascent_seed")
         except (OSError, ValueError):
-            scenario_path = SCENARIOS_DIR / "nominal_ascent.json"
-            if not scenario_path.exists():
-                return
-            try:
-                run_scenario(Scenario.from_file(scenario_path), WEB_RUNS_DIR / "nominal_ascent_seed")
-            except (OSError, ValueError):
-                return
+            return
+
+
+def _ensure_seed_suite_background() -> None:
+    global SEED_SUITE_STARTED
+    if _seed_suite_ready() or not SCENARIOS_DIR.exists():
+        return
+    with SEED_LOCK:
+        if SEED_SUITE_STARTED or _seed_suite_ready():
+            return
+        SEED_SUITE_STARTED = True
+    EXECUTOR.submit(_seed_suite_worker, SCENARIOS_DIR, _seed_suite_dir())
+
+
+def _seed_suite_worker(scenarios_dir: Path, seed_dir: Path) -> None:
+    global SEED_SUITE_STARTED
+    try:
+        result = batch_run(scenarios_dir, seed_dir)
+        write_json(seed_dir / ".seed_complete.json", {"generated_at_utc": _utc_now(), "scenario_count": result.get("count", 0)})
+    except (OSError, ValueError):
+        with SEED_LOCK:
+            SEED_SUITE_STARTED = False
 
 
 def _seed_suite_dir() -> Path:

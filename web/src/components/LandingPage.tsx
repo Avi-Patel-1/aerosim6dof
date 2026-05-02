@@ -55,37 +55,52 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
 
   useEffect(() => {
     let mounted = true;
-    let selectedRun: RunSummary | null = null;
-    getRuns()
-      .then((runs) => {
-        const previewRun = runs.find((run) => run.id.startsWith("web_runs~")) ?? runs[0];
-        if (!previewRun) {
-          return null;
-        }
-        selectedRun = previewRun;
-        return getTelemetry(previewRun.id, 3);
-      })
-      .then((series) => {
-        if (mounted && series?.history.length) {
-          previewRunRef.current = selectedRun;
-          previewTelemetryRef.current = series;
-          setPreviewRun(selectedRun);
-          setPreviewTelemetry(series);
-          setPreviewRows(series.history);
-          setPreviewIndex((index) => Math.min(index, series.history.length - 1));
-        }
-      })
-      .catch(() => {
-        if (mounted) {
-          previewRunRef.current = null;
-          previewTelemetryRef.current = null;
-          setPreviewRun(null);
-          setPreviewTelemetry(null);
-          setPreviewRows([]);
-        }
-      });
+    let retryTimer: number | undefined;
+
+    const loadPreview = () => {
+      let selectedRun: RunSummary | null = null;
+      getRuns()
+        .then((runs) => {
+          const previewRun = runs.find((run) => run.id.includes("nominal_ascent")) ?? runs.find((run) => run.id.startsWith("web_runs~")) ?? runs[0];
+          if (!previewRun) {
+            return null;
+          }
+          selectedRun = previewRun;
+          return getTelemetry(previewRun.id, 3);
+        })
+        .then((series) => {
+          if (!mounted) {
+            return;
+          }
+          if (series?.history.length) {
+            previewRunRef.current = selectedRun;
+            previewTelemetryRef.current = series;
+            setPreviewRun(selectedRun);
+            setPreviewTelemetry(series);
+            setPreviewRows(series.history);
+            setPreviewIndex((index) => Math.min(index, series.history.length - 1));
+            return;
+          }
+          retryTimer = window.setTimeout(loadPreview, 1800);
+        })
+        .catch(() => {
+          if (mounted) {
+            previewRunRef.current = null;
+            previewTelemetryRef.current = null;
+            setPreviewRun(null);
+            setPreviewTelemetry(null);
+            setPreviewRows([]);
+            retryTimer = window.setTimeout(loadPreview, 1800);
+          }
+        });
+    };
+
+    loadPreview();
     return () => {
       mounted = false;
+      if (retryTimer !== undefined) {
+        window.clearTimeout(retryTimer);
+      }
     };
   }, []);
 
