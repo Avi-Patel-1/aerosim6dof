@@ -62,6 +62,7 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
     steps = int(math.floor(scenario.duration / scenario.dt)) + 1
     for step in range(steps):
         t = step * scenario.dt
+        terrain_state = terrain.query(state.position_m)
         wind_sample = wind_model.sample(t, state.position_m, float(np.linalg.norm(state.velocity_mps)), scenario.dt)
         pre_eval = dynamics.evaluate(t, state, controls_eff, wind_sample.velocity_mps)
         nav = navigation.estimate(state, sensors.last_values)
@@ -82,7 +83,8 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
                 "airspeed_mps": evaluation.airspeed_mps,
                 "qbar_pa": evaluation.aero.qbar_pa,
                 "mach": evaluation.aero.mach,
-                "altitude_agl_m": terrain.above_ground(state.position_m),
+                "terrain_elevation_m": terrain_state["terrain_elevation_m"],
+                "altitude_agl_m": terrain_state["altitude_agl_m"],
             },
         )
         history, truth, controls, sensor_row = build_rows(
@@ -94,12 +96,14 @@ def run_scenario(scenario: Scenario, out_dir: str | Path) -> dict[str, Any]:
             controls_eff,
             actuator_flags,
             sensor_values,
+            terrain_elevation_m=terrain_state["terrain_elevation_m"],
+            altitude_agl_m=terrain_state["altitude_agl_m"],
         )
         history_rows.append(history)
         truth_rows.append(truth)
         control_rows.append(controls)
         sensor_rows.append(sensor_row)
-        stop = detector.update(history, controls, terrain.above_ground(state.position_m))
+        stop = detector.update(history, controls, terrain_state["altitude_agl_m"])
         if stop or step == steps - 1:
             break
         state = _advance_state(scenario.integrator, dynamics, state, controls_eff, wind_sample.velocity_mps, t, scenario.dt)
@@ -371,6 +375,7 @@ def _generate_plots(out: Path, rows: list[dict[str, Any]]) -> list[Path]:
         ("25_energy_proxy.svg", "time", ["energy_j_per_kg"], "Specific Energy", "J/kg"),
         ("26_qbar_load_envelope.svg", "xy_qbar", ["load_factor_g"], "Qbar/Load Envelope", "load factor (g)"),
         ("27_target_distance.svg", "time", ["target_distance_m"], "Target Distance", "distance (m)"),
+        ("28_agl_terrain.svg", "time", ["altitude_m", "terrain_elevation_m", "altitude_agl_m"], "Terrain/AGL", "altitude (m)"),
     ]
     paths: list[Path] = []
     for filename, mode, keys, title, label in specs:

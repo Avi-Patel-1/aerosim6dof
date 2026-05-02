@@ -237,7 +237,9 @@ def _less(row: TelemetryRow, key: str, threshold: float) -> bool:
 
 
 def _low_altitude_descent(row: TelemetryRow) -> bool:
-    altitude = _number(row.get("altitude_m"))
+    altitude = _number(row.get("altitude_agl_m"))
+    if altitude is None:
+        altitude = _number(row.get("altitude_m"))
     vertical_speed = _number(row.get("vz_mps"))
     return altitude is not None and vertical_speed is not None and altitude < 100.0 and vertical_speed < -20.0
 
@@ -371,7 +373,7 @@ ALARM_RULES: tuple[AlarmRule, ...] = (
         source="history",
         subsystem="Flight Safety",
         message="Vehicle descended rapidly below the low-altitude safety gate.",
-        threshold="altitude_m < 100 m and vz_mps < -20 m/s",
+        threshold="altitude_agl_m < 100 m and vz_mps < -20 m/s",
         channels=("altitude_m", "vz_mps"),
         datasets=("history", "truth"),
         predicate=lambda row, _context: _low_altitude_descent(row),

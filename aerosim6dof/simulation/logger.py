@@ -17,13 +17,19 @@ def build_rows(
     controls_rad: dict[str, float],
     actuator_flags: dict[str, Any],
     sensors: dict[str, float],
+    terrain_elevation_m: float | None = None,
+    altitude_agl_m: float | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     roll, pitch, yaw = to_euler(state.quaternion)
+    terrain_elevation = float(terrain_elevation_m) if terrain_elevation_m is not None else 0.0
+    altitude_agl = float(altitude_agl_m) if altitude_agl_m is not None else float(state.position_m[2]) - terrain_elevation
     truth = {
         "time_s": t,
         "x_m": float(state.position_m[0]),
         "y_m": float(state.position_m[1]),
         "altitude_m": float(state.position_m[2]),
+        "terrain_elevation_m": terrain_elevation,
+        "altitude_agl_m": altitude_agl,
         "vx_mps": float(state.velocity_mps[0]),
         "vy_mps": float(state.velocity_mps[1]),
         "vz_mps": float(state.velocity_mps[2]),

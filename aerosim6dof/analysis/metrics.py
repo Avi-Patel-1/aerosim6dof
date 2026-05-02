@@ -20,10 +20,13 @@ def summarize(rows: list[dict[str, Any]], events: list[dict[str, Any]], scenario
             "x_m": float(final["x_m"]),
             "y_m": float(final["y_m"]),
             "altitude_m": float(final["altitude_m"]),
+            "altitude_agl_m": _finite_float(final.get("altitude_agl_m")),
+            "terrain_elevation_m": _finite_float(final.get("terrain_elevation_m")),
             "speed_mps": float(final["speed_mps"]),
             "mass_kg": float(final["mass_kg"]),
         },
         "max_altitude_m": max(float(r["altitude_m"]) for r in rows),
+        "min_altitude_agl_m": _finite_min([r.get("altitude_agl_m") for r in rows]),
         "max_speed_mps": max(float(r["speed_mps"]) for r in rows),
         "max_load_factor_g": max(float(r["load_factor_g"]) for r in rows),
         "max_qbar_pa": max(float(r["qbar_pa"]) for r in rows),
@@ -38,3 +41,6 @@ def _finite_min(values: list[Any]) -> float | None:
     finite = [float(v) for v in values if isinstance(v, (int, float)) and np.isfinite(v)]
     return min(finite) if finite else None
 
+
+def _finite_float(value: Any) -> float | None:
+    return float(value) if isinstance(value, (int, float)) and np.isfinite(value) else None

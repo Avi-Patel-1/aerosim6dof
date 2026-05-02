@@ -19,6 +19,7 @@ from aerosim6dof.core.integration import adaptive_rk45_step, rk2_step
 from aerosim6dof.core.quaternions import from_euler, normalize, to_dcm, to_euler
 from aerosim6dof.environment.atmosphere import atmosphere
 from aerosim6dof.environment.gravity import gravity_magnitude
+from aerosim6dof.environment.terrain import TerrainModel
 from aerosim6dof.environment.wind import WindModel
 from aerosim6dof.gnc.lqr import controllability_rank, discrete_lqr
 from aerosim6dof.gnc.trim import simple_trim
@@ -53,6 +54,39 @@ class FlightSimTests(unittest.TestCase):
     def test_atmosphere_and_gravity(self):
         self.assertGreater(atmosphere(0)["density"], atmosphere(5000)["density"])
         self.assertGreater(gravity_magnitude(0), gravity_magnitude(20000))
+
+    def test_terrain_models_and_agl_queries(self):
+        plane = TerrainModel({"base_altitude_m": 5.0, "slope_x": 0.01, "slope_y": -0.02})
+        position = np.array([100.0, 10.0, 50.0])
+        self.assertAlmostEqual(plane.elevation(position), 5.8)
+        self.assertAlmostEqual(plane.query(position)["altitude_agl_m"], 44.2)
+
+        grid = TerrainModel(
+            {
+                "type": "grid",
+                "grid": {
+                    "x_m": [0.0, 10.0],
+                    "y_m": [0.0, 10.0],
+                    "elevation_m": [[0.0, 10.0], [20.0, 30.0]],
+                },
+            }
+        )
+        self.assertAlmostEqual(grid.elevation(np.array([5.0, 5.0, 100.0])), 15.0)
+
+        featured = TerrainModel(
+            {"features": [{"type": "hill", "center_m": [0.0, 0.0], "height_m": 20.0, "radius_m": 10.0}]}
+        )
+        self.assertGreater(
+            featured.elevation(np.array([0.0, 0.0, 0.0])),
+            featured.elevation(np.array([30.0, 0.0, 0.0])),
+        )
+
+        malformed = TerrainModel(
+            {"base_altitude_m": "bad", "grid": {"x_m": ["bad"], "y_m": [0.0], "elevation_m": [["bad"]]}}
+        )
+        self.assertEqual(malformed.elevation(np.array([0.0, 0.0, 10.0])), 0.0)
+        disabled = TerrainModel({"enabled": "false", "base_altitude_m": 500.0})
+        self.assertEqual(disabled.elevation(np.array([0.0, 0.0, 10.0])), 0.0)
 
     def test_integrators(self):
         def fn(_t, y):
@@ -172,7 +206,17 @@ class FlightSimTests(unittest.TestCase):
         self.assertIn("radar_agl_m", first)
         self.assertIn("optical_flow_x_radps", first)
         self.assertIn("horizon_pitch_deg", first)
+        self.assertAlmostEqual(first["radar_agl_m"], 100.0, delta=1.0)
         self.assertEqual(first.get("gps_valid"), second.get("gps_valid"))
+        uncoupled = SensorSuite({"seed": 2, "radar_altimeter": {"rate_hz": 20.0, "noise_std_m": 0.0, "terrain_coupled": False}})
+        self.assertAlmostEqual(uncoupled.sample(0.0, 0.02, truth)["radar_agl_m"], 100.0)
+        truth_with_terrain = dict(truth)
+        truth_with_terrain["position_m"] = np.array([1.0, 2.0, 150.0])
+        truth_with_terrain["altitude_agl_m"] = 120.0
+        coupled = SensorSuite({"seed": 2, "radar_altimeter": {"rate_hz": 20.0, "noise_std_m": 0.0, "terrain_coupled": True}})
+        uncoupled = SensorSuite({"seed": 2, "radar_altimeter": {"rate_hz": 20.0, "noise_std_m": 0.0, "terrain_coupled": False}})
+        self.assertAlmostEqual(coupled.sample(0.0, 0.02, truth_with_terrain)["radar_agl_m"], 120.0)
+        self.assertAlmostEqual(uncoupled.sample(0.0, 0.02, truth_with_terrain)["radar_agl_m"], 150.0)
         faulted = SensorSuite({"seed": 2, "gps": {"rate_hz": 10.0}, "faults": [{"sensor": "gps", "type": "dropout", "start_s": 0.0, "end_s": 1.0}]})
         self.assertEqual(faulted.sample(0.0, 0.02, truth)["gps_valid"], 0.0)
 
@@ -197,6 +241,10 @@ class FlightSimTests(unittest.TestCase):
             self.assertGreaterEqual(len(list((out / "plots").glob("*.svg"))), 25)
             data = json.loads((out / "summary.json").read_text())
             self.assertIn("max_speed_mps", data)
+            self.assertIn("min_altitude_agl_m", data)
+            history_header = (out / "history.csv").read_text().splitlines()[0]
+            self.assertIn("altitude_agl_m", history_header)
+            self.assertIn("terrain_elevation_m", history_header)
             manifest = json.loads((out / "manifest.json").read_text())
             self.assertEqual(manifest["scenario"], "nominal_ascent")
 

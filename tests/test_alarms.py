@@ -47,6 +47,17 @@ class AlarmEvaluationTests(unittest.TestCase):
         self.assertTrue(alarm["active"])
         self.assertIsNone(alarm["cleared_time_s"])
 
+    def test_low_altitude_alarm_prefers_agl_when_available(self):
+        alarms = evaluate_alarms(
+            history=[
+                {"time_s": 0.0, "altitude_m": 500.0, "altitude_agl_m": 160.0, "vz_mps": -10.0},
+                {"time_s": 1.0, "altitude_m": 450.0, "altitude_agl_m": 80.0, "vz_mps": -25.0},
+            ]
+        )
+        alarm = next(item for item in alarms if item["id"] == "LOW_ALTITUDE_HIGH_DESCENT_RATE")
+        self.assertEqual(alarm["severity"], "critical")
+        self.assertEqual(alarm["first_triggered_time_s"], 1.0)
+
     def test_missing_or_nonnumeric_channels_do_not_crash(self):
         alarms = evaluate_alarms(
             history=[

@@ -29,6 +29,7 @@ class SensorSuite:
         self.pitot = PitotSensor(self.config.get("pitot", {}))
         self.mag = MagnetometerSensor(self.config.get("magnetometer", {}))
         self.radar = RadarAltimeterSensor(self.config.get("radar_altimeter", {}))
+        self.radar_terrain_coupled = bool(self.config.get("radar_altimeter", {}).get("terrain_coupled", True))
         self.flow = OpticalFlowSensor(self.config.get("optical_flow", {}))
         self.horizon = HorizonSensor(self.config.get("horizon", {}))
         self.rates = {
@@ -49,6 +50,7 @@ class SensorSuite:
         output = dict(self.last_values)
         output["sensor_time_s"] = float(t)
         agl_m = float(truth.get("altitude_agl_m", truth["position_m"][2]))
+        radar_agl_m = agl_m if self.radar_terrain_coupled else float(truth["position_m"][2])
         velocity_body = to_dcm(truth["quaternion"]).T @ truth["velocity_mps"]
         if self._due("imu", t):
             fault = self._fault_state("imu", t)
@@ -106,7 +108,7 @@ class SensorSuite:
             output.update(
                 self.radar.sample(
                     self.rng,
-                    agl_m,
+                    radar_agl_m,
                     extra_bias_m=float(fault.get("bias_m", 0.0)),
                     dropout=bool(fault.get("dropout", False)),
                 )

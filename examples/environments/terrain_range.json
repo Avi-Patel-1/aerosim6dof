@@ -1,0 +1,26 @@
+{
+  "extends": "gusted_range.json",
+  "name": "terrain_range",
+  "terrain": {
+    "enabled": true,
+    "type": "plane",
+    "base_altitude_m": 4.0,
+    "slope_x": 0.003,
+    "slope_y": -0.001,
+    "features": [
+      {
+        "type": "hill",
+        "center_m": [900.0, 120.0],
+        "height_m": 38.0,
+        "radius_m": 260.0
+      },
+      {
+        "type": "ridge",
+        "axis": "y",
+        "center_m": -180.0,
+        "height_m": 18.0,
+        "half_width_m": 220.0
+      }
+    ]
+  }
+}
