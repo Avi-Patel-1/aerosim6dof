@@ -68,6 +68,7 @@ JOBS: dict[str, dict[str, Any]] = {}
 JOBS_LOCK = threading.Lock()
 SEED_LOCK = threading.Lock()
 SEED_SUITE_STARTED = False
+REQUIRED_HISTORY_COLUMNS = {"altitude_agl_m", "terrain_elevation_m"}
 
 CAPABILITIES = [
     {"id": "run", "group": "launch", "label": "Run"},
@@ -621,8 +622,15 @@ def _find_run_dirs() -> list[Path]:
     run_dirs = []
     seed_suite_ready = _seed_suite_ready()
     minimum_seed_dir = (WEB_RUNS_DIR / "nominal_ascent_seed").resolve()
+    seed_suite_dir = _seed_suite_dir().resolve()
     for summary_path in OUTPUTS_DIR.rglob("summary.json"):
         run_dir = summary_path.parent
+        resolved = run_dir.resolve()
+        if (
+            (resolved == minimum_seed_dir or _is_within(resolved, seed_suite_dir))
+            and not _run_has_required_history_columns(run_dir)
+        ):
+            continue
         if seed_suite_ready and run_dir.resolve() == minimum_seed_dir:
             continue
         if (run_dir / "history.csv").exists():
@@ -677,8 +685,24 @@ def _seed_suite_ready() -> bool:
     if not marker.exists():
         return False
     scenario_count = len(list(SCENARIOS_DIR.glob("*.json")))
-    run_count = sum(1 for path in _seed_suite_dir().glob("*/summary.json") if (path.parent / "history.csv").exists())
+    run_count = sum(
+        1
+        for path in _seed_suite_dir().glob("*/summary.json")
+        if (path.parent / "history.csv").exists() and _run_has_required_history_columns(path.parent)
+    )
     return scenario_count > 0 and run_count >= scenario_count
+
+
+def _run_has_required_history_columns(run_dir: Path) -> bool:
+    history = run_dir / "history.csv"
+    if not history.exists():
+        return False
+    try:
+        with history.open("r", encoding="utf-8") as handle:
+            header = handle.readline().strip().split(",")
+    except OSError:
+        return False
+    return REQUIRED_HISTORY_COLUMNS.issubset(set(header))
 
 
 def _build_run_summary(run_dir: Path) -> RunSummary:

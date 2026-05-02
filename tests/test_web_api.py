@@ -1,6 +1,8 @@
 import shutil
+import tempfile
 import time
 import unittest
+from pathlib import Path
 
 try:
     from fastapi.testclient import TestClient
@@ -166,6 +168,41 @@ class WebApiTests(unittest.TestCase):
         self.assertEqual(metadata["custom_rate_mps"]["group"], "Unknown")
         self.assertEqual(metadata["mystery_valid"]["source"], "sensors")
         self.assertEqual(metadata["mystery_valid"]["role"], "sensor")
+
+    def test_seed_suite_requires_current_history_schema(self):
+        from aerosim6dof.web import api
+
+        original_outputs = api.OUTPUTS_DIR
+        original_web_runs = api.WEB_RUNS_DIR
+        original_scenarios = api.SCENARIOS_DIR
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            outputs = root / "outputs"
+            web_runs = outputs / "web_runs"
+            scenarios = root / "scenarios"
+            seed_suite = web_runs / "seed_scenario_suite"
+            run_dir = seed_suite / "nominal_ascent"
+            scenarios.mkdir(parents=True)
+            run_dir.mkdir(parents=True)
+            (scenarios / "nominal_ascent.json").write_text("{}")
+            (seed_suite / ".seed_complete.json").write_text('{"scenario_count": 1}')
+            (run_dir / "summary.json").write_text("{}")
+            (run_dir / "history.csv").write_text("time_s,altitude_m\n0,10\n")
+
+            api.OUTPUTS_DIR = outputs
+            api.WEB_RUNS_DIR = web_runs
+            api.SCENARIOS_DIR = scenarios
+            try:
+                self.assertFalse(api._seed_suite_ready())
+                self.assertEqual(api._find_run_dirs(), [])
+
+                (run_dir / "history.csv").write_text("time_s,altitude_m,terrain_elevation_m,altitude_agl_m\n0,10,2,8\n")
+                self.assertTrue(api._seed_suite_ready())
+                self.assertEqual(api._find_run_dirs(), [run_dir])
+            finally:
+                api.OUTPUTS_DIR = original_outputs
+                api.WEB_RUNS_DIR = original_web_runs
+                api.SCENARIOS_DIR = original_scenarios
 
 
 if __name__ == "__main__":
