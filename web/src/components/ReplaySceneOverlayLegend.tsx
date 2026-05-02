@@ -4,22 +4,31 @@ import {
   getReplayCameraPreset,
   type ImpactContactDescriptor,
   type RangeMarkerDescriptor,
+  type ReplayAltitudeReferenceDescriptor,
   type ReplayCameraPresetId,
+  type ReplayEngagementMarkerDescriptor,
+  type ReplayOverlayState,
   type ReplayTrailColorMode,
   type ReplayVectorOverlayDescriptor,
   type SensorConeDescriptor,
   type TrailColorDescriptor,
+  type TrailColorLegendDescriptor,
   type TrailColorLegendStop
 } from "../replayVisuals";
 
 export type ReplaySceneOverlayLegendProps = {
+  overlayState?: ReplayOverlayState;
+  altitudeReference?: ReplayAltitudeReferenceDescriptor;
   vectors?: ReplayVectorOverlayDescriptor[];
   sensorCones?: SensorConeDescriptor[];
+  engagementMarkers?: ReplayEngagementMarkerDescriptor[];
   rangeMarkers?: RangeMarkerDescriptor[];
   contacts?: ImpactContactDescriptor[];
   trail?: TrailColorDescriptor;
+  trailLegend?: TrailColorLegendDescriptor;
   trailMode?: ReplayTrailColorMode;
   cameraMode?: ReplayCameraPresetId;
+  cameraLabel?: string;
   compact?: boolean;
   className?: string;
 };
@@ -127,24 +136,39 @@ const styles = {
 } satisfies Record<string, CSSProperties>;
 
 export function ReplaySceneOverlayLegend({
+  overlayState,
+  altitudeReference,
   vectors = [],
   sensorCones = [],
+  engagementMarkers = [],
   rangeMarkers = [],
   contacts = [],
   trail,
+  trailLegend,
   trailMode = "plain",
   cameraMode = "chase",
+  cameraLabel,
   compact = false,
   className
 }: ReplaySceneOverlayLegendProps) {
-  const camera = getReplayCameraPreset(cameraMode);
-  const activeVectors = vectors.filter((vector) => vector.visible);
-  const activeSensors = sensorCones.filter((sensor) => sensor.visible);
+  const resolvedAltitudeReference = overlayState?.altitudeReference ?? altitudeReference;
+  const resolvedVectors = overlayState?.vectors ?? vectors;
+  const resolvedSensorCones = overlayState?.sensorCones ?? sensorCones;
+  const resolvedEngagementMarkers = overlayState?.engagementMarkers ?? engagementMarkers;
+  const resolvedContacts = overlayState?.contacts ?? contacts;
+  const resolvedTrail = overlayState?.trailLegend ?? trailLegend ?? trail;
+  const resolvedCameraMode = overlayState?.cameraMode ?? cameraMode;
+  const activeAltitudeReference = resolvedAltitudeReference?.visible ? resolvedAltitudeReference : undefined;
+  const activeVectors = resolvedVectors.filter((vector) => vector.visible);
+  const activeSensors = resolvedSensorCones.filter((sensor) => sensor.visible);
+  const activeMarkers = resolvedEngagementMarkers.filter((marker) => marker.visible);
   const activeRanges = rangeMarkers.filter((marker) => marker.visible).slice(0, compact ? 2 : 4);
-  const activeContacts = contacts.filter((contact) => contact.visible);
-  const trailStops = trail?.legendStops ?? fallbackTrailStops(trailMode);
-  const trailLabel = trail?.profile.label ?? REPLAY_TRAIL_COLOR_PROFILES[trailMode].label;
-  const hasOverlayItems = activeVectors.length + activeSensors.length + activeRanges.length + activeContacts.length > 0;
+  const activeContacts = resolvedContacts.filter((contact) => contact.visible);
+  const trailStops = resolvedTrail?.legendStops ?? fallbackTrailStops(trailMode);
+  const trailLabel = resolvedTrail?.profile.label ?? REPLAY_TRAIL_COLOR_PROFILES[trailMode].label;
+  const resolvedCameraLabel = overlayState?.cameraLabel ?? cameraLabel ?? getReplayCameraPreset(resolvedCameraMode).label;
+  const hasOverlayItems =
+    (activeAltitudeReference ? 1 : 0) + activeVectors.length + activeSensors.length + activeMarkers.length + activeRanges.length + activeContacts.length > 0;
 
   return (
     <aside
@@ -154,7 +178,7 @@ export function ReplaySceneOverlayLegend({
     >
       <div style={styles.header}>
         <h3 style={styles.title}>Scene overlays</h3>
-        <span style={styles.camera}>{camera.label}</span>
+        <span style={styles.camera}>{resolvedCameraLabel}</span>
       </div>
 
       <LegendSection
@@ -165,8 +189,10 @@ export function ReplaySceneOverlayLegend({
 
       {hasOverlayItems ? (
         <>
+          <LegendSection title="Reference" items={activeAltitudeReference ? [altitudeReferenceItem(activeAltitudeReference)] : []} />
           <LegendSection title="Vectors" items={activeVectors.map(vectorItem)} />
           <LegendSection title="Sensors" items={activeSensors.map(sensorItem)} />
+          <LegendSection title="Markers" items={activeMarkers.map(markerItem)} />
           <LegendSection title="Range" items={activeRanges.map(rangeItem)} />
           <LegendSection title="Contact" items={activeContacts.map(contactItem)} />
         </>
@@ -229,6 +255,15 @@ function vectorItem(vector: ReplayVectorOverlayDescriptor): LegendItem {
   };
 }
 
+function altitudeReferenceItem(reference: ReplayAltitudeReferenceDescriptor): LegendItem {
+  return {
+    id: reference.id,
+    label: reference.label,
+    value: reference.metricLabel,
+    color: reference.color
+  };
+}
+
 function sensorItem(sensor: SensorConeDescriptor): LegendItem {
   return {
     id: sensor.id,
@@ -236,6 +271,15 @@ function sensorItem(sensor: SensorConeDescriptor): LegendItem {
     value: sensor.statusLabel,
     color: sensor.color,
     muted: !sensor.sensorValid
+  };
+}
+
+function markerItem(marker: ReplayEngagementMarkerDescriptor): LegendItem {
+  return {
+    id: marker.id,
+    label: marker.label,
+    value: marker.metricLabel,
+    color: marker.color
   };
 }
 

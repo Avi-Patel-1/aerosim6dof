@@ -1,5 +1,6 @@
 import {
   Bell,
+  Clipboard,
   Download,
   Eye,
   Gauge,
@@ -11,15 +12,19 @@ import {
   Trash2
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { channelLabel, channelLabelWithUnit, formatTelemetryValue } from "../telemetry";
+import { channelLabel, channelLabelWithUnit } from "../telemetry";
 import type { AlarmSummary, TelemetryChannelMetadata, TelemetryRow, TelemetrySeries } from "../types";
 import {
+  buildTelemetryOpsLayoutPayload,
   deleteTelemetryChartLayout,
   downloadTelemetryCsv,
+  groupTruthSensorEstimateChannels,
   listPinnedTelemetryChannels,
   listTelemetryChartLayouts,
+  numericStatsForChannel,
+  parseTelemetryOpsLayoutPayload,
   saveTelemetryChartLayout,
-  telemetryRowsToCsv,
+  selectedTelemetryRowsToCsvText,
   togglePinnedTelemetryChannel,
   type TelemetryChartLayout
 } from "../telemetryOps";
@@ -58,13 +63,19 @@ type ChannelSummary = {
   min: string;
   max: string;
   rawCurrent: number | string | null | undefined;
+  sampleIndex: number;
+  numericCount: number;
 };
 
 type SavedLayout = {
+  id: string;
   name: string;
   subsystem: SubsystemId;
   channels: string[];
   pinned: string[];
+  selectedChannel: string;
+  query: string;
+  savedAt: string;
 };
 
 const SUBSYSTEMS: { id: SubsystemId; label: string; terms: string[]; defaults: string[] }[] = [
@@ -107,7 +118,8 @@ function unique(items: string[]): string[] {
 }
 
 function metadataMap(telemetry: TelemetrySeries | null | undefined, override?: Record<string, TelemetryChannelMetadata>): Record<string, TelemetryChannelMetadata> | undefined {
-  return override ?? telemetry?.metadata;
+  const candidate = override ?? telemetry?.metadata;
+  return candidate && typeof candidate === "object" ? candidate : undefined;
 }
 
 function channelKeys(telemetry: TelemetrySeries | null | undefined, metadata?: Record<string, TelemetryChannelMetadata>): string[] {
@@ -163,66 +175,88 @@ function formatStat(value: number | string | null | undefined, unit = ""): strin
   return "-";
 }
 
+function nearestDefinedSample(rows: TelemetryRow[], currentIndex: number, key: string): { value: TelemetryRow[string] | undefined; index: number } {
+  if (!rows.length) {
+    return { value: undefined, index: -1 };
+  }
+  const boundedIndex = Math.min(Math.max(currentIndex, 0), rows.length - 1);
+  const direct = rows[boundedIndex]?.[key];
+  if (direct !== null && direct !== undefined && direct !== "") {
+    return { value: direct, index: boundedIndex };
+  }
+  for (let index = boundedIndex - 1; index >= 0; index -= 1) {
+    const value = rows[index]?.[key];
+    if (value !== null && value !== undefined && value !== "") {
+      return { value, index };
+    }
+  }
+  for (let index = boundedIndex + 1; index < rows.length; index += 1) {
+    const value = rows[index]?.[key];
+    if (value !== null && value !== undefined && value !== "") {
+      return { value, index };
+    }
+  }
+  return { value: undefined, index: -1 };
+}
+
 function channelSummaries(rows: TelemetryRow[], currentIndex: number, channels: string[], metadata?: Record<string, TelemetryChannelMetadata>): ChannelSummary[] {
   return channels.map((key) => {
-    const values = rows.map((row) => asNumber(row[key])).filter((value): value is number => value !== null);
+    const stats = numericStatsForChannel(rows, key, currentIndex);
+    const sample = nearestDefinedSample(rows, currentIndex, key);
     const unit = metadata?.[key]?.unit ?? "";
+    const current = sample.value === undefined ? "-" : typeof sample.value === "number" ? formatStat(sample.value, unit) : formatStat(sample.value);
     return {
       key,
-      current: formatTelemetryValue(rows[currentIndex], key, metadata),
-      min: values.length ? formatStat(Math.min(...values), unit) : "-",
-      max: values.length ? formatStat(Math.max(...values), unit) : "-",
-      rawCurrent: rows[currentIndex]?.[key]
+      current,
+      min: formatStat(stats.min, unit),
+      max: formatStat(stats.max, unit),
+      rawCurrent: sample.value,
+      sampleIndex: sample.index,
+      numericCount: stats.count
     };
   });
 }
 
-function truthSensorEstimateSuggestions(selected: string, keys: string[], metadata?: Record<string, TelemetryChannelMetadata>): { label: string; key: string | null }[] {
-  const normalized = selected.replace(/^(truth_|sensor_|estimate_|estimated_|gps_|imu_|baro_|radar_|pitot_)/, "");
-  const normalizedParts = normalized.split("_");
-  const normalizedTail = normalizedParts[normalizedParts.length - 1] ?? normalized;
-  const candidates = (terms: string[]) =>
-    (keys.find((key) => {
-      const text = channelText(metadata, key);
-      return key.endsWith(normalized) && terms.some((term) => text.includes(term));
-    }) ??
-    keys.find((key) => terms.some((term) => key.includes(term)) && key.includes(normalizedTail)) ??
-    null);
-  return [
-    { label: "Truth", key: candidates(["truth", "state", "history"]) },
-    { label: "Sensor", key: candidates(["sensor", "gps", "imu", "baro", "radar", "pitot"]) },
-    { label: "Estimate", key: candidates(["estimate", "estimated", "navigation", "filter", "gnc"]) }
-  ];
+function isSubsystemId(value: string): value is SubsystemId {
+  return SUBSYSTEMS.some((subsystem) => subsystem.id === value);
 }
 
 function readLayouts(): SavedLayout[] {
   return listTelemetryChartLayouts()
-    .filter((layout) => layout.config?.kind === "operations-telemetry")
-    .map((layout) => ({
+    .map((layout) => ({ layout, payload: parseTelemetryOpsLayoutPayload(layout.config) }))
+    .filter((item): item is { layout: TelemetryChartLayout; payload: NonNullable<ReturnType<typeof parseTelemetryOpsLayoutPayload>> } => item.payload !== null)
+    .map(({ layout, payload }) => ({
+      id: layout.id,
       name: layout.name,
-      subsystem: typeof layout.config?.subsystem === "string" ? (layout.config.subsystem as SubsystemId) : "vehicle",
-      channels: layout.channels,
-      pinned: Array.isArray(layout.config?.pinned) ? layout.config.pinned.filter((item): item is string => typeof item === "string") : []
+      subsystem: isSubsystemId(payload.subsystem) ? payload.subsystem : "vehicle",
+      channels: unique(payload.channels.length ? payload.channels : layout.channels),
+      pinned: payload.pinned,
+      selectedChannel: payload.selectedChannel,
+      query: payload.query,
+      savedAt: payload.savedAt
     }));
 }
 
 function writeLayout(layout: SavedLayout): SavedLayout[] {
-  const existing = listTelemetryChartLayouts().find((item) => item.name === layout.name && item.config?.kind === "operations-telemetry");
+  const existing = listTelemetryChartLayouts().find((item) => item.name === layout.name && parseTelemetryOpsLayoutPayload(item.config));
+  const payload = buildTelemetryOpsLayoutPayload({
+    subsystem: layout.subsystem,
+    channels: layout.channels,
+    pinned: layout.pinned,
+    selectedChannel: layout.selectedChannel,
+    query: layout.query
+  });
   saveTelemetryChartLayout({
     id: existing?.id,
     name: layout.name,
     channels: layout.channels,
-    config: {
-      kind: "operations-telemetry",
-      subsystem: layout.subsystem,
-      pinned: layout.pinned
-    }
+    config: payload
   });
   return readLayouts();
 }
 
 function removeLayout(name: string): SavedLayout[] {
-  const layout = listTelemetryChartLayouts().find((item: TelemetryChartLayout) => item.name === name && item.config?.kind === "operations-telemetry");
+  const layout = listTelemetryChartLayouts().find((item: TelemetryChartLayout) => item.name === name && parseTelemetryOpsLayoutPayload(item.config));
   if (layout) {
     deleteTelemetryChartLayout(layout.id);
   }
@@ -252,6 +286,7 @@ export function OperationsTelemetryPanel({
   const [selectedChannel, setSelectedChannel] = useState("");
   const [layoutName, setLayoutName] = useState(DEFAULT_LAYOUT_NAME);
   const [layouts, setLayouts] = useState<SavedLayout[]>([]);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   const subsystemKeys = useMemo(() => subsystemChannels(activeSubsystem, keys, metadata), [activeSubsystem, keys, metadata]);
   const visibleKeys = useMemo(() => {
@@ -279,8 +314,17 @@ export function OperationsTelemetryPanel({
 
   const chartChannels = unique([...pinnedChannels, ...selectedChannels]).filter((key) => keys.includes(key)).slice(0, 10);
   const summaries = channelSummaries(rows, safeIndex, chartChannels, metadata);
-  const selectedSuggestions = truthSensorEstimateSuggestions(selectedChannel || chartChannels[0] || "", keys, metadata);
+  const comparisonGroups = groupTruthSensorEstimateChannels(selectedChannel || chartChannels[0] || "", keys, metadata);
   const currentTime = asTime(rows[safeIndex]);
+  const csvChannels = useMemo(() => unique(["time_s", ...chartChannels]).filter((key) => key === "time_s" || keys.includes(key)), [chartChannels, keys]);
+  const selectedCsvText = useMemo(
+    () =>
+      selectedTelemetryRowsToCsvText([{ id: telemetry?.run_id ?? "run", rows }], csvChannels, {
+        includeRunId: true,
+        includeRowIndex: true
+      }),
+    [csvChannels, rows, telemetry?.run_id]
+  );
 
   const toggleChannel = (key: string) => {
     setSelectedChannel(key);
@@ -306,15 +350,19 @@ export function OperationsTelemetryPanel({
 
   const saveLayout = () => {
     const name = layoutName.trim() || DEFAULT_LAYOUT_NAME;
-    setLayouts(writeLayout({ name, subsystem: activeSubsystem, channels: selectedChannels, pinned: pinnedChannels }));
+    setLayouts(writeLayout({ id: "", name, subsystem: activeSubsystem, channels: selectedChannels, pinned: pinnedChannels, selectedChannel, query, savedAt: "" }));
     setLayoutName(name);
   };
 
   const loadLayout = (layout: SavedLayout) => {
+    const layoutChannels = layout.channels.filter((key) => keys.includes(key));
+    const layoutPinned = layout.pinned.filter((key) => keys.includes(key));
+    const preferredChannel = layout.selectedChannel && [...layoutChannels, ...layoutPinned].includes(layout.selectedChannel) ? layout.selectedChannel : layoutChannels[0] ?? layoutPinned[0] ?? "";
     setActiveSubsystem(layout.subsystem);
-    setSelectedChannels(layout.channels.filter((key) => keys.includes(key)));
-    setPinnedChannels(layout.pinned.filter((key) => keys.includes(key)));
-    setSelectedChannel(layout.channels[0] ?? layout.pinned[0] ?? "");
+    setSelectedChannels(layoutChannels);
+    setPinnedChannels(layoutPinned);
+    setSelectedChannel(preferredChannel);
+    setQuery(layout.query);
     setLayoutName(layout.name);
   };
 
@@ -322,8 +370,20 @@ export function OperationsTelemetryPanel({
     if (!chartChannels.length) {
       return;
     }
-    const csv = telemetryRowsToCsv([{ id: telemetry?.run_id ?? "run", rows }], ["time_s", ...chartChannels], { includeRunId: true, includeRowIndex: true });
-    downloadTelemetryCsv(`operations-telemetry-${telemetry?.run_id ?? "run"}.csv`, csv);
+    downloadTelemetryCsv(`operations-telemetry-${telemetry?.run_id ?? "run"}.csv`, selectedCsvText);
+  };
+
+  const copyCsvText = async () => {
+    if (!selectedCsvText || typeof navigator === "undefined" || !navigator.clipboard) {
+      setCopyState("failed");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(selectedCsvText);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
   };
 
   return (
@@ -340,6 +400,10 @@ export function OperationsTelemetryPanel({
           <button type="button" className="secondary-action" onClick={exportCsv} disabled={!chartChannels.length}>
             <Download size={16} />
             Export selected
+          </button>
+          <button type="button" className="secondary-action" onClick={copyCsvText} disabled={!chartChannels.length}>
+            <Clipboard size={16} />
+            {copyState === "copied" ? "CSV copied" : "Copy CSV text"}
           </button>
           <label className="field compact-field">
             <span>Layout</span>
@@ -437,6 +501,11 @@ export function OperationsTelemetryPanel({
               showLimits
               pinnedChannels={pinnedChannels}
             />
+            <details className="operations-csv-text">
+              <summary>Selected CSV text ({csvChannels.length} columns)</summary>
+              <textarea readOnly spellCheck={false} rows={4} value={selectedCsvText} aria-label="Selected telemetry CSV text" />
+              {copyState === "failed" && <p className="empty-state">Clipboard unavailable; CSV text remains selectable here.</p>}
+            </details>
           </section>
 
           <section className="operations-current-values">
@@ -463,6 +532,7 @@ export function OperationsTelemetryPanel({
                     <td>{summary.max}</td>
                     <td>
                       <code>{summary.key}</code>
+                      {summary.sampleIndex >= 0 && summary.sampleIndex !== safeIndex && <small> sample {summary.sampleIndex}</small>}
                     </td>
                   </tr>
                 ))}
@@ -481,18 +551,26 @@ export function OperationsTelemetryPanel({
               <h3>Truth / Sensor / Estimate</h3>
             </div>
             <div className="operations-suggestion-grid">
-              {selectedSuggestions.map((suggestion) => (
-                <button
-                  key={suggestion.label}
-                  type="button"
-                  className={suggestion.key && chartChannels.includes(suggestion.key) ? "active" : ""}
-                  disabled={!suggestion.key}
-                  onClick={() => suggestion.key && toggleChannel(suggestion.key)}
-                >
-                  <span>{suggestion.label}</span>
-                  <strong>{suggestion.key ? channelLabelWithUnit(metadata, suggestion.key) : "No close match"}</strong>
-                </button>
-              ))}
+              {comparisonGroups.flatMap((group) =>
+                group.channels.length
+                  ? group.channels.map((suggestion) => (
+                      <button
+                        key={`${group.role}-${suggestion.channel}`}
+                        type="button"
+                        className={chartChannels.includes(suggestion.channel) ? "active" : ""}
+                        onClick={() => toggleChannel(suggestion.channel)}
+                      >
+                        <span>{group.label}</span>
+                        <strong>{channelLabelWithUnit(metadata, suggestion.channel)}</strong>
+                      </button>
+                    ))
+                  : [
+                      <button key={group.role} type="button" disabled>
+                        <span>{group.label}</span>
+                        <strong>No close match</strong>
+                      </button>
+                    ]
+              )}
             </div>
           </section>
 
@@ -523,6 +601,7 @@ export function OperationsTelemetryPanel({
                     <span>
                       {layout.channels.length} channels · {layout.pinned.length} pinned
                     </span>
+                    {layout.savedAt && <span>Saved {new Date(layout.savedAt).toLocaleString()}</span>}
                   </button>
                   <button type="button" aria-label={`Delete ${layout.name}`} onClick={() => setLayouts(removeLayout(layout.name))}>
                     <Trash2 size={15} />

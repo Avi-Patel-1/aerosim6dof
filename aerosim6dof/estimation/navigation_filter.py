@@ -7,17 +7,37 @@ simulator runner or logger to an estimator implementation.
 
 from __future__ import annotations
 
+import csv
 import math
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Iterable
 
 import numpy as np
+
+from aerosim6dof.reports.csv_writer import read_csv
 
 
 POSITION_KEYS = ("x_m", "y_m", "altitude_m")
 VELOCITY_KEYS = ("vx_mps", "vy_mps", "vz_mps")
 GPS_POSITION_KEYS = ("gps_x_m", "gps_y_m", "gps_z_m")
 GPS_VELOCITY_KEYS = ("gps_vx_mps", "gps_vy_mps", "gps_vz_mps")
+CORE_TELEMETRY_CHANNELS = (
+    ("time_s", "Time", "s"),
+    ("estimate_x_m", "Estimated X", "m"),
+    ("estimate_y_m", "Estimated Y", "m"),
+    ("estimate_z_m", "Estimated Z", "m"),
+    ("estimate_vx_mps", "Estimated VX", "m/s"),
+    ("estimate_vy_mps", "Estimated VY", "m/s"),
+    ("estimate_vz_mps", "Estimated VZ", "m/s"),
+    ("estimate_altitude_m", "Estimated Altitude", "m"),
+    ("estimate_speed_mps", "Estimated Speed", "m/s"),
+    ("estimate_position_error_m", "Estimated Position Error", "m"),
+    ("estimate_velocity_error_mps", "Estimated Velocity Error", "m/s"),
+    ("gnss_quality", "GNSS Quality", ""),
+    ("covariance_trace", "Covariance Trace", ""),
+    ("gps_valid", "GPS Valid", ""),
+)
 
 
 @dataclass(frozen=True)
@@ -274,6 +294,58 @@ def build_navigation_telemetry(
     return output
 
 
+def load_navigation_telemetry_from_run(run_dir: str | Path, stride: int = 1) -> dict[str, Any]:
+    """Load run CSVs and build API-ready navigation telemetry.
+
+    The loader prefers separate `sensors.csv` and `truth.csv` files, then falls
+    back to combined `history.csv` rows. Missing optional files and malformed
+    columns are reported in the summary warnings rather than raised to callers.
+    """
+
+    run_path = Path(run_dir)
+    stride_value = _stride_value(stride)
+    warnings: list[str] = []
+    sensors_path = run_path / "sensors.csv"
+    truth_path = run_path / "truth.csv"
+    history_path = run_path / "history.csv"
+    sensors_rows = _read_run_csv(sensors_path, warnings)
+    truth_rows = _read_run_csv(truth_path, warnings)
+    history_rows: list[dict[str, Any]] = []
+    source = "empty"
+    source_files: list[str] = []
+
+    if sensors_rows:
+        sampled_sensors = sensors_rows[::stride_value]
+        sampled_truth = truth_rows[::stride_value] if truth_rows else None
+        rows = build_navigation_telemetry(sampled_sensors, sampled_truth)
+        source = "sensors_truth" if truth_rows else "sensors"
+        source_files.append("sensors.csv")
+        if truth_rows:
+            source_files.append("truth.csv")
+        else:
+            warnings.append("truth.csv missing or empty; estimate error fields are unavailable")
+    else:
+        history_rows = _read_run_csv(history_path, warnings)
+        if history_rows:
+            rows = build_navigation_telemetry(history_rows[::stride_value])
+            source = "history"
+            source_files.append("history.csv")
+        else:
+            rows = []
+            warnings.append("no navigation source rows found in sensors.csv or history.csv")
+
+    channels = _navigation_channels_for_rows(rows)
+    summary = _navigation_summary(
+        rows,
+        source=source,
+        source_files=source_files,
+        stride=stride_value,
+        warnings=warnings,
+        input_row_count=len(sensors_rows) if sensors_rows else len(history_rows),
+    )
+    return {"rows": rows, "channels": channels, "summary": summary}
+
+
 def navigation_telemetry_row(
     estimate: NavigationEstimate,
     *,
@@ -290,6 +362,8 @@ def navigation_telemetry_row(
         "estimate_vx_mps": float(estimate.velocity_mps[0]),
         "estimate_vy_mps": float(estimate.velocity_mps[1]),
         "estimate_vz_mps": float(estimate.velocity_mps[2]),
+        "estimate_altitude_m": float(estimate.position_m[2]),
+        "estimate_speed_mps": float(np.linalg.norm(estimate.velocity_mps)),
         "cov_x_m2": float(max(0.0, estimate.covariance[0, 0])),
         "cov_y_m2": float(max(0.0, estimate.covariance[1, 1])),
         "cov_z_m2": float(max(0.0, estimate.covariance[2, 2])),
@@ -299,9 +373,15 @@ def navigation_telemetry_row(
         "position_sigma_m": float(math.sqrt(max(0.0, np.trace(estimate.covariance[0:3, 0:3])))),
         "velocity_sigma_mps": float(math.sqrt(max(0.0, np.trace(estimate.covariance[3:6, 3:6])))),
         "covariance_trace": float(max(0.0, np.trace(estimate.covariance))),
+        "gnss_quality": float(estimate.gnss_quality_score),
         "gnss_quality_score": float(estimate.gnss_quality_score),
         "gnss_used": 1.0 if estimate.gnss_used else 0.0,
         "update_dimension": float(estimate.update_dimension),
+        "gps_valid": _finite_or_none((sensor_row or {}).get("gps_valid")),
+        "position_error_m": None,
+        "velocity_error_mps": None,
+        "estimate_position_error_m": None,
+        "estimate_velocity_error_mps": None,
     }
     truth_position = _truth_position(truth_row or {})
     truth_velocity = _vector_from_row(truth_row or {}, VELOCITY_KEYS)
@@ -317,6 +397,7 @@ def navigation_telemetry_row(
                 "y_error_m": float(estimate.position_m[1] - truth_position[1]),
                 "z_error_m": float(estimate.position_m[2] - truth_position[2]),
                 "position_error_m": float(np.linalg.norm(estimate.position_m - truth_position)),
+                "estimate_position_error_m": float(np.linalg.norm(estimate.position_m - truth_position)),
             }
         )
     if truth_velocity is not None:
@@ -329,6 +410,7 @@ def navigation_telemetry_row(
                 "vy_error_mps": float(estimate.velocity_mps[1] - truth_velocity[1]),
                 "vz_error_mps": float(estimate.velocity_mps[2] - truth_velocity[2]),
                 "velocity_error_mps": float(np.linalg.norm(estimate.velocity_mps - truth_velocity)),
+                "estimate_velocity_error_mps": float(np.linalg.norm(estimate.velocity_mps - truth_velocity)),
             }
         )
     if sensor_position is not None:
@@ -508,3 +590,97 @@ def _finite_or_default(value: Any, default: float) -> float:
 
 def _clip(value: float, lower: float, upper: float) -> float:
     return float(min(upper, max(lower, value)))
+
+
+def _stride_value(stride: int) -> int:
+    try:
+        value = int(stride)
+    except (TypeError, ValueError):
+        return 1
+    return max(1, value)
+
+
+def _read_run_csv(path: Path, warnings: list[str]) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    try:
+        return list(read_csv(path))
+    except (OSError, ValueError, csv.Error) as exc:
+        warnings.append(f"{path.name} could not be read: {exc}")
+        return []
+
+
+def _navigation_channels_for_rows(rows: list[dict[str, Any]]) -> list[dict[str, str]]:
+    ordered_keys = [key for key, _label, _unit in CORE_TELEMETRY_CHANNELS]
+    for row in rows:
+        for key in row:
+            if key not in ordered_keys:
+                ordered_keys.append(key)
+    metadata = {key: (label, unit) for key, label, unit in CORE_TELEMETRY_CHANNELS}
+    return [
+        {
+            "key": key,
+            "label": metadata.get(key, (_title_from_key(key), ""))[0],
+            "unit": metadata.get(key, ("", ""))[1],
+        }
+        for key in ordered_keys
+    ]
+
+
+def _navigation_summary(
+    rows: list[dict[str, Any]],
+    *,
+    source: str,
+    source_files: list[str],
+    stride: int,
+    warnings: list[str],
+    input_row_count: int,
+) -> dict[str, Any]:
+    times = _finite_values(rows, "time_s")
+    gps_valid = _finite_values(rows, "gps_valid")
+    position_errors = _finite_values(rows, "estimate_position_error_m")
+    velocity_errors = _finite_values(rows, "estimate_velocity_error_mps")
+    qualities = _finite_values(rows, "gnss_quality")
+    summary: dict[str, Any] = {
+        "row_count": len(rows),
+        "input_row_count": int(input_row_count),
+        "stride": int(stride),
+        "source": source,
+        "source_files": list(source_files),
+        "warnings": list(dict.fromkeys(warnings)),
+        "time_start_s": min(times) if times else None,
+        "time_end_s": max(times) if times else None,
+        "duration_s": (max(times) - min(times)) if times else None,
+        "gps_valid_fraction": _mean(gps_valid) if gps_valid else None,
+        "gnss_quality_mean": _mean(qualities) if qualities else None,
+        "max_estimate_position_error_m": max(position_errors) if position_errors else None,
+        "max_estimate_velocity_error_mps": max(velocity_errors) if velocity_errors else None,
+        "final_estimate_altitude_m": _last_finite(rows, "estimate_altitude_m"),
+        "final_estimate_speed_mps": _last_finite(rows, "estimate_speed_mps"),
+    }
+    return summary
+
+
+def _finite_values(rows: list[dict[str, Any]], key: str) -> list[float]:
+    values: list[float] = []
+    for row in rows:
+        value = _finite_or_none(row.get(key))
+        if value is not None:
+            values.append(value)
+    return values
+
+
+def _last_finite(rows: list[dict[str, Any]], key: str) -> float | None:
+    for row in reversed(rows):
+        value = _finite_or_none(row.get(key))
+        if value is not None:
+            return value
+    return None
+
+
+def _mean(values: list[float]) -> float | None:
+    return float(sum(values) / len(values)) if values else None
+
+
+def _title_from_key(key: str) -> str:
+    return key.replace("_", " ").title()

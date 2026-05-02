@@ -92,7 +92,7 @@ class JobEvent(BaseModel):
 class JobSummary(BaseModel):
     id: str
     action: str
-    status: Literal["queued", "running", "completed", "failed"]
+    status: Literal["queued", "running", "completed", "failed", "cancelled"]
     message: str = ""
     progress: float = 0.0
     created_at_utc: str

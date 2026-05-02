@@ -23,16 +23,25 @@ Use `createReplaySceneTransform(rows)` once for a row set, then pass that transf
 
 ```ts
 import {
+  buildReplayOverlayState,
   buildReplayTrajectoryVisuals,
   buildReplayVisualFrame,
+  buildTrailColorLegendDescriptor,
   createReplaySceneTransform
 } from "../replayVisuals";
 
 const transform = createReplaySceneTransform(rows);
 const trajectory = buildReplayTrajectoryVisuals(rows, transform);
+const trailLegend = buildTrailColorLegendDescriptor(rows, trailColorMode);
 const frame = buildReplayVisualFrame(rows, {
   currentIndex,
   trailMode: trailColorMode
+});
+const overlayState = buildReplayOverlayState(rows, currentIndex, {
+  transform,
+  trailLegend,
+  trailMode: trailColorMode,
+  cameraMode
 });
 ```
 
@@ -50,28 +59,63 @@ const frame = buildReplayVisualFrame(rows, {
 
 Each descriptor has a stable `id`, `visible` flag, colors, and source telemetry keys where useful. The intent is for `ReplayScene` to own actual Three.js meshes, while these helpers own the telemetry-to-visual decisions.
 
+## Current-Frame Overlay State
+
+Use `buildReplayOverlayState(rows, currentIndex, options)` for HUD and overlay UI that only needs the active frame. It returns:
+
+- `altitudeReference`: current vehicle point, terrain point, clearance, and display label.
+- `vectors`: velocity, acceleration, and wind descriptors for the current sample.
+- `sensorCones`: active sensor cone descriptors only.
+- `engagementMarkers`: active target/interceptor marker descriptors only.
+- `contacts`: current impact/contact status descriptor.
+- `trailLegend`: trail profile, min/max, and legend stops without per-sample trail stops.
+- `cameraMode` and `cameraLabel`: resolved camera metadata for compact UI labels.
+
+The helper does not build full trajectory arrays. For production mounting, compute row-set data once with `useMemo` and pass it back:
+
+```tsx
+const replayTransform = useMemo(() => createReplaySceneTransform(rows), [rows]);
+const trailLegend = useMemo(() => buildTrailColorLegendDescriptor(rows, trailColorMode), [rows, trailColorMode]);
+
+const overlayState = useMemo(
+  () =>
+    buildReplayOverlayState(rows, currentIndex, {
+      transform: replayTransform,
+      trailLegend,
+      trailMode: trailColorMode,
+      cameraMode,
+      showVelocity,
+      showAcceleration,
+      showWind,
+      showSensors
+    }),
+  [cameraMode, currentIndex, replayTransform, rows, showAcceleration, showSensors, showVelocity, showWind, trailColorMode, trailLegend]
+);
+```
+
+If `transform` or `trailLegend` is omitted, the helper can derive them from `rows`; that is useful for simple callers, but parents with frame-by-frame playback should memoize those values so the per-frame call stays bounded to the current row and previous row.
+
 ## Legend Integration
 
 The legend component is optional and can be layered over the canvas by a parent that already has positioning.
 
 ```tsx
 import { ReplaySceneOverlayLegend } from "./ReplaySceneOverlayLegend";
-import { buildReplayVisualFrame } from "../replayVisuals";
+import { buildReplayOverlayState } from "../replayVisuals";
 
-const frame = buildReplayVisualFrame(rows, {
-  currentIndex,
-  trailMode: trailColorMode
+const overlayState = buildReplayOverlayState(rows, currentIndex, {
+  transform: replayTransform,
+  trailLegend,
+  trailMode: trailColorMode,
+  cameraMode
 });
 
 <ReplaySceneOverlayLegend
-  vectors={frame.vectors}
-  sensorCones={frame.sensorCones}
-  rangeMarkers={frame.rangeMarkers}
-  contacts={frame.contacts}
-  trail={frame.trail}
-  cameraMode={cameraMode}
+  overlayState={overlayState}
 />;
 ```
+
+The component also accepts individual props (`altitudeReference`, `vectors`, `sensorCones`, `engagementMarkers`, `contacts`, `trailLegend`, and `cameraLabel`) if the parent wants to keep its own state shape. `rangeMarkers` remains supported for callers that still use the broader `buildReplayVisualFrame` output.
 
 The component uses inline styles only, so it does not require edits to `styles.css`. If the integrator wants the legend inside the current replay stage, the stage container needs `position: relative` or equivalent.
 
@@ -91,5 +135,5 @@ Each preset includes a label, intent, target strategy, scene offset, field of vi
 
 - The utilities intentionally do not import Three.js. Convert `ReplayScenePoint` into `THREE.Vector3` at the scene boundary.
 - Existing `ReplayScene` internals can be migrated incrementally: start with `createReplaySceneTransform` and `buildReplayTrajectoryVisuals`, then replace vector, sensor, range, and impact decisions one group at a time.
-- `buildReplayVisualFrame` is convenient for HUD/legend data. For performance-sensitive canvas updates, compute the transform and trajectory with `useMemo`, then call the smaller group helpers in the per-frame effect.
+- `buildReplayVisualFrame` is convenient for broad debug snapshots. For production HUD/legend data, prefer `buildReplayOverlayState` with memoized `transform` and `trailLegend`.
 - The helpers keep invalid sensor descriptors with `visible: false`. This is useful for legends and toggles because the descriptor IDs are stable.

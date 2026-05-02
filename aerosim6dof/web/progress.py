@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import datetime, timezone
 import math
 import re
+from threading import RLock
 from typing import Any, Mapping
 
 
@@ -59,6 +60,87 @@ class ProgressEvent:
         return json_safe(asdict(self))
 
 
+@dataclass(frozen=True)
+class CancellationState:
+    job_id: str
+    requested: bool
+    requested_at: str = ""
+    reason: str = ""
+    requested_by: str = ""
+    message: str = ""
+
+    def __post_init__(self) -> None:
+        requested = bool(self.requested)
+        object.__setattr__(self, "job_id", str(self.job_id or ""))
+        object.__setattr__(self, "requested", requested)
+        object.__setattr__(self, "requested_at", normalize_timestamp(self.requested_at) or (utc_now() if requested else ""))
+        object.__setattr__(self, "reason", str(self.reason or ""))
+        object.__setattr__(self, "requested_by", str(self.requested_by or ""))
+        object.__setattr__(self, "message", str(self.message or ("Cancellation requested" if requested else "")))
+
+    def to_dict(self) -> dict[str, Any]:
+        return json_safe(asdict(self))
+
+
+class JobCancellationRegistry:
+    """Thread-safe cancellation state for background web jobs."""
+
+    def __init__(self) -> None:
+        self._lock = RLock()
+        self._requests: dict[str, CancellationState] = {}
+
+    def request_cancel(
+        self,
+        job_id: str,
+        *,
+        reason: Any | None = None,
+        requested_by: Any | None = None,
+        message: Any | None = None,
+        requested_at: Any | None = None,
+    ) -> CancellationState:
+        normalized_job_id = _require_job_id(job_id)
+        state = make_cancellation_payload(
+            normalized_job_id,
+            requested=True,
+            reason=reason,
+            requested_by=requested_by,
+            message=message,
+            requested_at=requested_at,
+        )
+        with self._lock:
+            self._requests[normalized_job_id] = state
+        return state
+
+    def clear_cancel(self, job_id: str) -> CancellationState:
+        normalized_job_id = _require_job_id(job_id)
+        with self._lock:
+            self._requests.pop(normalized_job_id, None)
+        return make_cancellation_payload(normalized_job_id, requested=False)
+
+    def is_cancel_requested(self, job_id: str) -> bool:
+        normalized_job_id = str(job_id or "")
+        if not normalized_job_id:
+            return False
+        with self._lock:
+            return normalized_job_id in self._requests
+
+    def get(self, job_id: str) -> CancellationState:
+        normalized_job_id = _require_job_id(job_id)
+        with self._lock:
+            state = self._requests.get(normalized_job_id)
+        return state or make_cancellation_payload(normalized_job_id, requested=False)
+
+    def cancellation_payload(self, job_id: str) -> dict[str, Any]:
+        return self.get(job_id).to_dict()
+
+    def active_requests(self) -> list[CancellationState]:
+        with self._lock:
+            return list(self._requests.values())
+
+
+job_cancellation_registry = JobCancellationRegistry()
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -98,6 +180,41 @@ def normalize_percent(value: Any, *, phase: Any | None = None) -> float:
 
 def is_terminal_phase(value: Any) -> bool:
     return normalize_phase(value) in TERMINAL_PHASES
+
+
+def make_cancellation_payload(
+    job_id: str,
+    *,
+    requested: bool,
+    reason: Any | None = None,
+    requested_by: Any | None = None,
+    message: Any | None = None,
+    requested_at: Any | None = None,
+) -> CancellationState:
+    return CancellationState(
+        job_id=str(job_id or ""),
+        requested=bool(requested),
+        reason=str(reason or ""),
+        requested_by=str(requested_by or ""),
+        message=str(message or ""),
+        requested_at=normalize_timestamp(requested_at),
+    )
+
+
+def request_cancel(job_id: str, **kwargs: Any) -> CancellationState:
+    return job_cancellation_registry.request_cancel(job_id, **kwargs)
+
+
+def clear_cancel(job_id: str) -> CancellationState:
+    return job_cancellation_registry.clear_cancel(job_id)
+
+
+def is_cancel_requested(job_id: str) -> bool:
+    return job_cancellation_registry.is_cancel_requested(job_id)
+
+
+def cancellation_payload(job_id: str) -> dict[str, Any]:
+    return job_cancellation_registry.cancellation_payload(job_id)
 
 
 def make_progress_event(
@@ -231,3 +348,10 @@ def _event_data(event: ProgressEvent | Mapping[str, Any] | None) -> dict[str, An
                 data[mapped] = value
         return data
     return {}
+
+
+def _require_job_id(job_id: str) -> str:
+    normalized = str(job_id or "").strip()
+    if not normalized:
+        raise ValueError("job_id is required")
+    return normalized

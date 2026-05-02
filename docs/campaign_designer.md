@@ -6,6 +6,7 @@ The browser-side mission campaign designer is split into a pure helper module an
 - `web/src/components/CampaignDesigner.tsx` renders the designer with existing workbench classes and emits a ready-to-run payload through `onRunPlan`.
 
 No backend API changes are required. The helper returns the same `{ action, params }` shape consumed by `runAction(action, params)` and `startJob(action, params)`.
+The component also shows the exact launch payload and can copy it for debugging or handoff to existing `/api/actions/{action}` and `/api/jobs/{action}` calls.
 
 ## Supported Plans
 
@@ -22,6 +23,7 @@ No backend API changes are required. The helper returns the same `{ action, para
 
 The browser validation catches obvious setup issues before work is queued:
 
+- Batch plans warn when the scenario index has not loaded, but still keep the backend batch action available.
 - Missing or unknown scenario IDs when a scenario-backed plan is selected.
 - Monte Carlo samples outside the API-supported `1..50` range.
 - Non-integer seeds and negative dispersions.
@@ -56,8 +58,14 @@ onDraftChange={(draft, payload, validation) => {
 
 ```ts
 import {
+  buildBatchCampaignModel,
+  buildCampaignPlanModel,
   buildCampaignActionPayload,
+  buildFaultCampaignModel,
+  buildMonteCarloCampaignModel,
+  buildSweepCampaignModel,
   createDefaultCampaignDraft,
+  estimateCampaignRuns,
   summarizeCampaignPlan,
   validateCampaignDraft
 } from "./campaignDesigner";
@@ -66,6 +74,13 @@ const draft = createDefaultCampaignDraft("nominal_ascent");
 const validation = validateCampaignDraft(draft, { scenarios, faultOptions });
 const payload = buildCampaignActionPayload(draft);
 const summary = summarizeCampaignPlan(draft, scenarios, faultOptions);
+const runCount = estimateCampaignRuns(draft, { scenarios, faultOptions });
+const model = buildCampaignPlanModel(draft, { scenarios, faultOptions });
+const monteCarloModel = buildMonteCarloCampaignModel(draft, { scenarios, faultOptions });
 ```
 
-`summary.rows` is intended for readable plan review in the UI. `payload` is the object to pass to the existing action/job API.
+`summary.rows` is intended for readable plan review in the UI. `payload` is the object to pass to the existing action/job API. `model` bundles the launch payload, validation, field issue map, run-count label, and route hint so mounting code can wire launch/progress controls without reimplementing campaign-specific rules. The per-kind helpers (`buildBatchCampaignModel`, `buildMonteCarloCampaignModel`, `buildSweepCampaignModel`, and `buildFaultCampaignModel`) force a draft into one campaign kind and return the same model shape.
+
+## Backend Notes
+
+No missing backend endpoints were found for the supported browser controls. The designer intentionally targets existing `batch`, `monte_carlo`, `sweep`, and `fault_campaign` actions only.

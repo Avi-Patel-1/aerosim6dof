@@ -88,7 +88,87 @@ class WebStorageTests(unittest.TestCase):
             self.assertFalse(storage.delete_json("layouts", "layout_a"))
             self.assertEqual(storage.list_json("layouts"), ["layout_b"])
 
+    def test_layout_crud_helpers_stamp_and_persist_public_payloads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = FileBackedStorage(tmp)
+
+            saved = storage.save_layout(
+                "pilot_primary",
+                {"name": "Pilot Primary", "panels": [{"metric": "altitude_m"}]},
+            )
+
+            self.assertEqual(saved["id"], "pilot_primary")
+            self.assertIn("created_at", saved)
+            self.assertIn("updated_at", saved)
+            self.assertEqual(storage.get_layout("pilot_primary"), saved)
+            self.assertEqual(storage.list_layouts(), [saved])
+
+            updated = storage.save_layout("pilot_primary", {"name": "Pilot Updated"})
+            self.assertEqual(updated["created_at"], saved["created_at"])
+            self.assertIn("updated_at", updated)
+            self.assertEqual(storage.get_layout("pilot_primary")["name"], "Pilot Updated")
+            self.assertTrue(storage.delete_layout("pilot_primary"))
+            self.assertIsNone(storage.get_layout("pilot_primary"))
+            self.assertFalse(storage.delete_layout("pilot_primary"))
+
+    def test_report_metadata_lists_newest_first(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = FileBackedStorage(tmp)
+            storage.save_report_metadata(
+                "packet_old",
+                {
+                    "title": "Old",
+                    "run_id": "run_alpha",
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "updated_at": "2026-01-01T00:00:00Z",
+                },
+            )
+            storage.save_report_metadata(
+                "packet_new",
+                {
+                    "title": "New",
+                    "run_id": "run_beta",
+                    "created_at": "2026-01-02T00:00:00Z",
+                    "updated_at": "2026-01-02T00:00:00Z",
+                },
+            )
+
+            self.assertEqual(
+                [record["id"] for record in storage.list_report_metadata()],
+                ["packet_new", "packet_old"],
+            )
+
+    def test_draft_metadata_helpers_stamp_and_list(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = FileBackedStorage(tmp)
+
+            saved = storage.save_draft_metadata(
+                "approach_draft",
+                {"title": "Approach Draft", "scenario_name": "approach", "tags": ["demo"]},
+            )
+
+            self.assertEqual(saved["id"], "approach_draft")
+            self.assertIn("created_at", saved)
+            self.assertIn("updated_at", saved)
+            self.assertEqual(storage.list_draft_metadata(), [saved])
+
+    def test_public_helpers_reject_traversal_and_non_json_payloads(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            storage = FileBackedStorage(root)
+
+            with self.assertRaises(ValueError):
+                storage.save_layout("../escape", {"name": "bad"})
+            with self.assertRaises(ValueError):
+                storage.save_report_metadata("bad_report", {"score": float("nan")})
+            with self.assertRaises(ValueError):
+                storage.save_draft_metadata("bad_draft", {1: "numeric key"})
+
+            self.assertFalse((root.parent / "escape.json").exists())
+            self.assertEqual(storage.list_layouts(), [])
+            self.assertEqual(storage.list_report_metadata(), [])
+            self.assertEqual(storage.list_draft_metadata(), [])
+
 
 if __name__ == "__main__":
     unittest.main()
-

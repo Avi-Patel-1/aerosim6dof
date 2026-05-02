@@ -1,8 +1,12 @@
-# Examples Gallery Foundation
+# Examples Gallery
 
-The examples gallery exposes curated cards for files under `examples/scenarios`.
-It is a data layer and presentational component only; route and Workbench wiring can
-be added by the parent integration.
+The examples gallery exposes curated cards for checked-in files under
+`examples/scenarios`. It is deliberately independent of `outputs/`: gallery
+generation reads scenario JSON only, so a fresh clone can render the gallery
+before any runs, reports, or plots exist.
+
+Route and Workbench wiring live outside this production pass. The backend helper
+and frontend component are safe to use from an API route, a local page, or tests.
 
 ## Backend Helper
 
@@ -15,53 +19,79 @@ from aerosim6dof.analysis.examples_gallery import build_examples_gallery
 cards = build_examples_gallery()
 ```
 
-Each card is a plain dictionary with:
+Each card is a plain dictionary with stable, scenario-file-derived IDs:
 
 - `id`
 - `title`
+- `category`
 - `description`
 - `scenario_path`
 - `tags`
 - `difficulty`
 - `expected_outputs`
 - `primary_metrics`
+- `suggested_next_edit`
+- `clone_payload`
+- `edit_payload`
+- `run_payload`
 - `can_run`
 - `notes`
 
-The helper has hand-authored metadata for nominal ascent, target/intercept,
-terrain/contact, and fault-style scenarios. Unknown scenarios get fallback
-metadata from the file name, guidance mode, and available config references.
+Curated metadata is provided for the public examples checked into
+`examples/scenarios`, including baseline, environment, guidance, engagement,
+sensors/navigation, aerodynamics, atmosphere, control-authority, and failure
+injection cases. Unknown scenario files still get fallback metadata inferred
+from the filename and JSON fields.
 
 Malformed JSON, missing directories, unsafe symlink targets, or scenario JSON
 with an unexpected shape do not raise from gallery generation. Invalid or weird
 files either become non-runnable cards with notes or are skipped when the path
 would escape `examples/scenarios`.
 
-## Route Integration
+## Payloads
 
-The intended API route can be added beside the existing scenario routes:
+Cards include one-click handoff payloads without requiring live run outputs:
 
-```python
-@router.get("/examples-gallery")
-def examples_gallery() -> list[dict[str, Any]]:
-    return build_examples_gallery(EXAMPLES_DIR)
+```json
+{
+  "clone_payload": {
+    "action": "clone_example",
+    "source_scenario_id": "nominal_ascent",
+    "scenario_path": "examples/scenarios/nominal_ascent.json",
+    "suggested_name": "nominal_ascent_copy",
+    "scenario_patch": { "name": "nominal_ascent_copy" }
+  },
+  "edit_payload": {
+    "action": "edit_example",
+    "scenario_id": "nominal_ascent",
+    "scenario_path": "examples/scenarios/nominal_ascent.json",
+    "focus": "Clone it, then change one pitch-program breakpoint..."
+  },
+  "run_payload": {
+    "action": "run",
+    "params": { "scenario_id": "nominal_ascent" }
+  }
+}
 ```
 
-Keep `scenario_path` as a repo-relative path such as
-`examples/scenarios/nominal_ascent.json`. The UI can use `id` for open/run
-requests and `scenario_path` for clone/edit handoff.
+Keep `scenario_path` repo-relative. Use `id` for current scenario APIs and the
+payloads for future clone/edit/run route wiring.
 
 ## Frontend Integration
 
 `web/src/examplesGallery.ts` defines the shared card type and helpers:
 
 - `filterExamplesGallery(cards, filters)`
+- `groupExamplesByCategory(cards)`
 - `groupExamplesByDifficulty(cards)`
 - `groupExamplesByTag(cards)`
+- `examplesGalleryCategories(cards)`
+- `examplesGalleryDifficulties(cards)`
 - `examplesGalleryTags(cards)`
 - `sortExamplesGalleryCards(cards)`
 
-`web/src/components/ExamplesGallery.tsx` is presentational:
+`web/src/components/ExamplesGallery.tsx` renders built-in search, category,
+difficulty, tag, and runnable-status filters. Existing card callbacks still work:
 
 ```tsx
 <ExamplesGallery
@@ -73,5 +103,15 @@ requests and `scenario_path` for clone/edit handoff.
 />
 ```
 
-The component reuses existing Workbench classes for sections, cards, badges, and
-actions. It does not fetch data or own route state.
+New route integrations can use payload callbacks instead:
+
+```tsx
+<ExamplesGallery
+  cards={cards}
+  onEditPayload={(payload) => editExample(payload)}
+  onClonePayload={(payload) => cloneExample(payload)}
+  onRunPayload={(payload) => runTool(payload.action, payload.params ?? {})}
+/>
+```
+
+The component does not fetch data or own route state.

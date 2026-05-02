@@ -30,6 +30,45 @@ class ScenarioAdvisory:
         return asdict(self)
 
 
+def summarize_scenario_advisories(advisories: list[ScenarioAdvisory] | list[Mapping[str, Any]]) -> dict[str, Any]:
+    """Return UI-ready aggregate counts and next actions for advisories."""
+
+    counts: dict[str, int] = {"error": 0, "warning": 0, "info": 0}
+    normalized: list[tuple[str, str | None]] = []
+    for advisory in advisories:
+        severity = _advisory_field(advisory, "severity", "info")
+        normalized_severity = str(severity or "info").lower()
+        counts[normalized_severity] = counts.get(normalized_severity, 0) + 1
+        suggestion = _advisory_field(advisory, "suggestion", None)
+        normalized.append((normalized_severity, str(suggestion) if suggestion else None))
+
+    highest = "none"
+    for severity in ("error", "warning", "info"):
+        if counts.get(severity, 0):
+            highest = severity
+            break
+
+    actions: list[str] = []
+    seen_actions: set[str] = set()
+    for severity in ("error", "warning", "info"):
+        for item_severity, suggestion in normalized:
+            if item_severity != severity or not suggestion or suggestion in seen_actions:
+                continue
+            actions.append(suggestion)
+            seen_actions.add(suggestion)
+
+    error_count = counts.get("error", 0)
+    return {
+        "counts_by_severity": counts,
+        "blocking_count": error_count,
+        "error_count": error_count,
+        "warning_count": counts.get("warning", 0),
+        "info_count": counts.get("info", 0),
+        "highest_severity": highest,
+        "suggested_next_actions": actions,
+    }
+
+
 def validate_scenario_advisories(scenario: Any, *, base_dir: str | Path | None = None) -> list[ScenarioAdvisory]:
     """Return non-fatal advisory warnings for a raw scenario JSON/dict.
 
@@ -52,6 +91,8 @@ def validate_scenario_advisories(scenario: Any, *, base_dir: str | Path | None =
     _check_termination_and_outputs(cfg, advisories)
     _check_terrain_radar(cfg, advisories)
     _check_engagement_links(cfg, advisories)
+    _check_missile_interceptor_compatibility(cfg, advisories)
+    _check_realism_config(cfg, advisories)
     _check_preset_compatibility(cfg, advisories)
     return advisories
 
@@ -321,7 +362,7 @@ def _check_termination_and_outputs(cfg: dict[str, Any], advisories: list[Scenari
         _add(
             advisories,
             "MISSING_TERMINATION_SECTION",
-            "warning",
+            "info",
             "events",
             "No termination/event limits are configured.",
             "Add qbar_limit_pa, load_limit_g, and target_threshold_m when applicable so failures stop clearly.",
@@ -414,6 +455,136 @@ def _check_engagement_links(cfg: dict[str, Any], advisories: list[ScenarioAdviso
         _add(advisories, "TARGET_THRESHOLD_MISSING", "warning", "events.target_threshold_m", "Targeted scenario has no target miss-distance threshold.", "Add events.target_threshold_m to make intercept success/failure explicit.")
 
 
+def _check_missile_interceptor_compatibility(cfg: dict[str, Any], advisories: list[ScenarioAdvisory]) -> None:
+    missile_present = "missile" in cfg and cfg.get("missile") is not None
+    missile = _dict(cfg.get("missile")) if missile_present else {}
+    interceptor_config_present = "interceptor" in cfg and cfg.get("interceptor") is not None
+    interceptor_config = _dict(cfg.get("interceptor")) if interceptor_config_present else {}
+    supported_dynamics = {"missile_dynamics_v1"}
+
+    if missile_present and not isinstance(cfg.get("missile"), Mapping):
+        _add(advisories, "MISSILE_CONFIG_NOT_OBJECT", "warning", "missile", "Missile configuration should be an object.", "Replace missile with a JSON object or remove the field.")
+    if interceptor_config_present and not isinstance(cfg.get("interceptor"), Mapping):
+        _add(advisories, "INTERCEPTOR_CONFIG_NOT_OBJECT", "warning", "interceptor", "Top-level interceptor configuration should be an object.", "Replace interceptor with a JSON object or move settings into interceptors[].")
+
+    missile_model = str(missile.get("model", missile.get("dynamics_model", ""))).strip()
+    if missile and missile_model and missile_model not in supported_dynamics:
+        _add(
+            advisories,
+            "MISSILE_MODEL_UNSUPPORTED",
+            "warning",
+            "missile.model",
+            "Missile model is not supported by the packaged missile dynamics helper.",
+            "Use missile_dynamics_v1 or remove the missile block until the model is implemented.",
+        )
+
+    if interceptor_config:
+        top_level_model = str(interceptor_config.get("model", interceptor_config.get("dynamics_model", ""))).strip()
+        if top_level_model and top_level_model not in supported_dynamics:
+            _add(
+                advisories,
+                "INTERCEPTOR_MODEL_UNSUPPORTED",
+                "warning",
+                "interceptor.model",
+                "Top-level interceptor model is not supported by the packaged interceptor path.",
+                "Use missile_dynamics_v1 or move supported kinematic settings into interceptors[].",
+            )
+        _add(
+            advisories,
+            "INTERCEPTOR_CONFIG_STANDALONE",
+            "info",
+            "interceptor",
+            "A top-level interceptor configuration block is present.",
+            "Confirm the runtime consumes this block, or move per-object settings into interceptors[].",
+        )
+
+    interceptors = cfg.get("interceptors")
+    interceptor_items = interceptors if isinstance(interceptors, list) else []
+    missile_model_interceptors = 0
+    for idx, interceptor in enumerate(interceptor_items):
+        if not isinstance(interceptor, Mapping):
+            continue
+        dynamics_model = str(interceptor.get("dynamics_model", interceptor.get("model", ""))).strip()
+        if not dynamics_model:
+            continue
+        path = f"interceptors[{idx}].dynamics_model"
+        if dynamics_model not in supported_dynamics:
+            _add(
+                advisories,
+                "INTERCEPTOR_DYNAMICS_UNSUPPORTED",
+                "warning",
+                path,
+                "Interceptor dynamics_model is not supported.",
+                "Use missile_dynamics_v1 for the packaged missile helper or omit dynamics_model for kinematic interceptors.",
+            )
+            continue
+        missile_model_interceptors += 1
+        if not missile:
+            _add(
+                advisories,
+                "MISSILE_CONFIG_MISSING_FOR_INTERCEPTOR",
+                "warning",
+                path,
+                "Interceptor requests missile_dynamics_v1 but no top-level missile configuration is present.",
+                "Add a missile block or omit dynamics_model to use the current kinematic interceptor path.",
+            )
+        elif missile_model and missile_model != dynamics_model:
+            _add(
+                advisories,
+                "MISSILE_INTERCEPTOR_MODEL_MISMATCH",
+                "warning",
+                path,
+                "Interceptor dynamics_model does not match missile.model.",
+                "Use matching missile_dynamics_v1 settings for the missile block and interceptor object.",
+            )
+
+    if missile and missile_model_interceptors == 0:
+        _add(
+            advisories,
+            "MISSILE_CONFIG_STANDALONE",
+            "info",
+            "missile",
+            "A missile block is present without an interceptor using missile_dynamics_v1.",
+            "Confirm this is intentional standalone helper configuration or add dynamics_model to the intended interceptor.",
+        )
+
+
+def _check_realism_config(cfg: dict[str, Any], advisories: list[ScenarioAdvisory]) -> None:
+    if "realism" not in cfg or cfg.get("realism") is None:
+        return
+    realism = cfg.get("realism")
+    if not isinstance(realism, Mapping):
+        _add(advisories, "REALISM_CONFIG_NOT_OBJECT", "warning", "realism", "Realism configuration should be an object.", "Replace realism with a JSON object or remove the field.")
+        return
+    known_toggles = {
+        "actuator_dynamics",
+        "atmosphere",
+        "engine_spool",
+        "mass_inertia",
+        "sensor_bias",
+        "sensor_latency",
+        "turbulence_profile",
+        "wind_shear",
+    }
+    for key, value in realism.items():
+        path = f"realism.{key}"
+        if key not in known_toggles:
+            _add(advisories, "REALISM_TOGGLE_UNSUPPORTED", "warning", path, "Realism toggle is not recognized by the packaged realism helpers.", "Use a supported realism toggle name or keep this as project metadata outside realism.")
+            continue
+        enabled = _toggle_enabled(value)
+        if enabled is None:
+            _add(advisories, "REALISM_TOGGLE_INVALID", "warning", path, "Realism toggle should be a boolean or an object with an enabled flag.", "Use true, false, or {\"enabled\": true}.")
+        elif enabled:
+            _add(
+                advisories,
+                "REALISM_TOGGLE_PRESENT",
+                "info",
+                path,
+                "Realism helper toggle is enabled in the scenario.",
+                "Confirm the selected runtime consumes this toggle before treating it as active physics.",
+            )
+
+
 def _check_preset_compatibility(cfg: dict[str, Any], advisories: list[ScenarioAdvisory]) -> None:
     initial = _dict(cfg.get("initial"))
     altitude = (_vector(initial.get("position_m")) or (0.0, 0.0, None))[2]
@@ -476,6 +647,12 @@ def _resolve_reference(value: str, base_dir: Path) -> tuple[Path, bool]:
     return candidates[0].resolve(strict=False), False
 
 
+def _advisory_field(advisory: ScenarioAdvisory | Mapping[str, Any], name: str, default: Any) -> Any:
+    if isinstance(advisory, Mapping):
+        return advisory.get(name, default)
+    return getattr(advisory, name, default)
+
+
 def _dict(value: Any) -> dict[str, Any]:
     return dict(value) if isinstance(value, Mapping) else {}
 
@@ -507,6 +684,15 @@ def _enabled(section: dict[str, Any], *, default: bool) -> bool:
     if "enabled" not in section:
         return default
     return bool(section.get("enabled"))
+
+
+def _toggle_enabled(value: Any) -> bool | None:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, Mapping):
+        enabled = value.get("enabled", True)
+        return enabled if isinstance(enabled, bool) else None
+    return None
 
 
 def _add(

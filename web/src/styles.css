@@ -787,6 +787,7 @@ svg {
 
 .replay-stage {
   --replay-scale: 0.92;
+  position: relative;
   min-height: min(820px, calc(100vh - 154px));
   display: flex;
   flex-direction: column;

@@ -26,7 +26,7 @@ from aerosim6dof.analysis.environment import environment_report
 from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.analysis.examples_gallery import build_examples_gallery
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
-from aerosim6dof.analysis.scenario_validation import validate_scenario_advisories
+from aerosim6dof.analysis.scenario_validation import summarize_scenario_advisories, validate_scenario_advisories
 from aerosim6dof.analysis.scenario_builder import (
     scenario_builder_explanation,
     scenario_builder_recommendations,
@@ -36,6 +36,7 @@ from aerosim6dof.analysis.scenario_builder import (
 from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
 from aerosim6dof.config import deep_merge, load_json, load_with_optional_base
+from aerosim6dof.estimation.navigation_filter import load_navigation_telemetry_from_run
 from aerosim6dof.gnc.trim import simple_trim, write_trim_result
 from aerosim6dof.metadata import VERSION
 from aerosim6dof.reports.csv_writer import read_csv
@@ -47,8 +48,8 @@ from aerosim6dof.simulation.fault_campaign import FAULT_LIBRARY, run_fault_campa
 from aerosim6dof.simulation.runner import batch_run, linearize_scenario, monte_carlo_run, report_run, run_scenario
 from aerosim6dof.telemetry.metadata import metadata_for_channels
 
-from .progress import progress_from_job_summary
-from .storage import storage_status
+from .progress import cancellation_payload, clear_cancel, is_cancel_requested, progress_from_job_summary, request_cancel
+from .storage import delete_layout, get_layout, list_layouts, list_report_metadata, save_layout, save_report_metadata, storage_status
 from .models import (
     ActionRequest,
     ActionResult,
@@ -133,6 +134,7 @@ def create_app() -> FastAPI:
         app.mount("/", StaticFiles(directory=dist, html=True), name="web")
     return app
 
+
 @router.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "version": VERSION}
@@ -141,6 +143,58 @@ def health() -> dict[str, Any]:
 @router.get("/storage/status")
 def get_storage_status() -> dict[str, Any]:
     return _safe_json(storage_status())
+
+
+@router.get("/storage/layouts")
+def get_storage_layouts() -> list[dict[str, Any]]:
+    try:
+        return _safe_json(list_layouts())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/storage/layouts/{layout_id}")
+def get_storage_layout(layout_id: str) -> dict[str, Any]:
+    try:
+        layout = get_layout(layout_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if layout is None:
+        raise HTTPException(status_code=404, detail="layout not found")
+    return _safe_json(layout)
+
+
+@router.post("/storage/layouts/{layout_id}")
+def put_storage_layout(layout_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return _safe_json(save_layout(layout_id, payload))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.delete("/storage/layouts/{layout_id}")
+def remove_storage_layout(layout_id: str) -> dict[str, Any]:
+    try:
+        deleted = delete_layout(layout_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"id": layout_id, "deleted": deleted}
+
+
+@router.get("/storage/reports")
+def get_storage_reports() -> list[dict[str, Any]]:
+    try:
+        return _safe_json(list_report_metadata())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/storage/reports/{report_id}")
+def put_storage_report(report_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        return _safe_json(save_report_metadata(report_id, payload))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/examples-gallery")
@@ -255,8 +309,9 @@ def validate_scenario(payload: ValidateRequest) -> dict[str, Any]:
             "valid": False,
             "errors": [str(exc)],
             **_scenario_builder_advisory(raw_config),
-            "advisories": _scenario_validation_advisories(raw_config, advisory_base),
+            **_scenario_validation_payload(raw_config, advisory_base),
         }
+    validation_payload = _scenario_validation_payload(raw_config, advisory_base)
     return {
         "valid": True,
         "scenario": scenario.name,
@@ -264,7 +319,7 @@ def validate_scenario(payload: ValidateRequest) -> dict[str, Any]:
         "duration": scenario.duration,
         "integrator": scenario.integrator,
         **_scenario_builder_advisory(raw_config),
-        "advisories": _scenario_validation_advisories(raw_config, advisory_base),
+        **validation_payload,
     }
 
 
@@ -315,6 +370,7 @@ def create_job(action: str, payload: ActionRequest) -> JobSummary:
             "finished_at_utc": None,
             "events": [{"time_utc": now, "status": "queued", "message": "queued", "progress": 0.0}],
             "result": None,
+            "params": _safe_json(dict(payload.params)),
         }
     EXECUTOR.submit(_run_job, job_id, action, dict(payload.params))
     return _job_summary(job_id)
@@ -330,6 +386,35 @@ def list_jobs(limit: int = Query(30, ge=1, le=100)) -> list[JobSummary]:
 @router.get("/jobs/{job_id}", response_model=JobSummary)
 def get_job(job_id: str) -> JobSummary:
     return _job_summary(job_id)
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(job_id: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    job = _job_payload(job_id)
+    if job["status"] in {"completed", "failed", "cancelled"}:
+        return {"cancel": cancellation_payload(job_id), "job": _job_summary(job_id)}
+    state = request_cancel(
+        job_id,
+        reason=(payload or {}).get("reason"),
+        requested_by=(payload or {}).get("requested_by"),
+        message=(payload or {}).get("message"),
+    )
+    if job["status"] == "queued":
+        _job_update(job_id, status="cancelled", message="cancelled before start", progress=1.0, finished=True)
+    else:
+        _job_update(job_id, status=job["status"], message="cancellation requested", progress=float(job.get("progress", 0.0)))
+    return {"cancel": state.to_dict(), "job": _job_summary(job_id)}
+
+
+@router.post("/jobs/{job_id}/retry", response_model=JobSummary)
+def retry_job(job_id: str) -> JobSummary:
+    job = _job_payload(job_id, public=False)
+    if job["status"] not in {"failed", "cancelled"}:
+        raise HTTPException(status_code=400, detail="only failed or cancelled jobs can be retried")
+    params = job.get("params")
+    if not isinstance(params, dict):
+        params = {}
+    return create_job(str(job["action"]), ActionRequest(params=dict(params)))
 
 
 @router.get("/jobs/{job_id}/events")
@@ -385,6 +470,23 @@ def get_run_alarms(run_id: str) -> list[AlarmSummary]:
         return []
 
 
+@router.get("/runs/{run_id}/navigation")
+def get_run_navigation(run_id: str, stride: int = Query(3, ge=1, le=5000)) -> dict[str, Any]:
+    run_dir = _run_dir_from_id(run_id)
+    try:
+        payload = load_navigation_telemetry_from_run(run_dir, stride=stride)
+    except Exception as exc:  # pragma: no cover - navigation must not break run loading
+        payload = {
+            "rows": [],
+            "channels": [],
+            "summary": {"row_count": 0, "stride": stride, "source": "error", "warnings": [str(exc)]},
+        }
+    channel_keys = [str(item.get("key")) for item in payload.get("channels", []) if isinstance(item, dict) and item.get("key")]
+    payload["run_id"] = run_id
+    payload["metadata"] = metadata_for_channels({"derived": channel_keys})
+    return _safe_json(payload)
+
+
 @router.get("/runs/{run_id}/report-studio")
 def get_report_studio_packet(run_id: str, sections: str | None = Query(default=None)) -> dict[str, Any]:
     run_dir = _run_dir_from_id(run_id)
@@ -425,11 +527,15 @@ def _scenario_builder_advisory(config: dict[str, Any]) -> dict[str, Any]:
         return {"summary": {}, "warnings": [], "explanation": "", "recommendations": []}
 
 
-def _scenario_validation_advisories(config: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
+def _scenario_validation_payload(config: dict[str, Any], base_dir: Path) -> dict[str, Any]:
     try:
-        return [advisory.to_dict() for advisory in validate_scenario_advisories(config, base_dir=base_dir)]
+        advisories = validate_scenario_advisories(config, base_dir=base_dir)
+        return {
+            "advisories": [advisory.to_dict() for advisory in advisories],
+            "advisory_summary": summarize_scenario_advisories(advisories),
+        }
     except Exception:  # pragma: no cover - advisories must not block validation
-        return []
+        return {"advisories": [], "advisory_summary": summarize_scenario_advisories([])}
 
 
 def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:
@@ -566,16 +672,30 @@ def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:
 
 
 def _run_job(job_id: str, action: str, params: dict[str, Any]) -> None:
+    if is_cancel_requested(job_id):
+        _job_update(job_id, status="cancelled", message="cancelled before start", progress=1.0, finished=True)
+        clear_cancel(job_id)
+        return
     if not _job_update(job_id, status="running", message="preparing inputs", progress=0.12, started=True):
         return
     try:
+        if is_cancel_requested(job_id):
+            _job_update(job_id, status="cancelled", message="cancelled before execution", progress=1.0, finished=True)
+            clear_cancel(job_id)
+            return
         _job_update(job_id, status="running", message=_action_stage(action), progress=0.34)
         result = _execute_action(action, params)
+        if is_cancel_requested(job_id):
+            _job_update(job_id, status="cancelled", message="cancelled after execution request", progress=1.0, finished=True)
+            clear_cancel(job_id)
+            return
         _job_update(job_id, status="running", message="indexing artifacts", progress=0.86)
     except Exception as exc:  # pragma: no cover - exercised through API behavior
         _job_update(job_id, status="failed", message=str(exc), progress=1.0, finished=True)
+        clear_cancel(job_id)
         return
     _job_update(job_id, status="completed", message=result.message or "completed", progress=1.0, finished=True, result=result)
+    clear_cancel(job_id)
 
 
 def _job_update(
@@ -615,12 +735,19 @@ def _action_stage(action: str) -> str:
 
 
 def _job_summary(job_id: str) -> JobSummary:
+    payload = _job_payload(job_id, public=True)
+    return JobSummary(**payload)
+
+
+def _job_payload(job_id: str, *, public: bool = True) -> dict[str, Any]:
     with JOBS_LOCK:
         job = JOBS.get(job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="job not found")
         payload = dict(job)
-    return JobSummary(**payload)
+    if public:
+        payload.pop("params", None)
+    return payload
 
 
 def _job_event_stream(job_id: str):
@@ -632,7 +759,7 @@ def _job_event_stream(job_id: str):
             payload = job.model_dump_json() if hasattr(job, "model_dump_json") else job.json()
             yield f"data: {payload}\n\n"
             last_event_count = event_count
-        if job.status in {"completed", "failed"}:
+        if job.status in {"completed", "failed", "cancelled"}:
             return
         time.sleep(0.2)
 

@@ -32,6 +32,30 @@ gallery/
 Each JSON object is addressed by a validated id or slug and written as
 `<id>.json`. Ids cannot contain slashes, `..`, or path traversal segments.
 
+## Public App Data Helpers
+
+Routes can use the storage helpers directly without adding authentication,
+accounts, or an external paid storage service. The helpers are for shared public
+application state only:
+
+- `save_layout(layout_id, payload)`, `list_layouts()`, `get_layout(layout_id)`,
+  and `delete_layout(layout_id)` store saved telemetry panel layouts in
+  `layouts/`.
+- `save_report_metadata(report_id, payload)` and `list_report_metadata()` store
+  report packet metadata in `reports/`.
+- `save_draft_metadata(draft_id, payload)` and `list_draft_metadata()` store
+  scenario draft metadata in `drafts/`.
+
+The same methods are available on `FileBackedStorage` instances, which is useful
+for tests or route code that wants to use a configured storage object.
+
+Helper payloads must be JSON objects containing only JSON-native values:
+strings, numbers, booleans, nulls, arrays, and objects with string keys. Non-finite
+numbers such as `NaN` and `Infinity` are rejected before writing. If `id`,
+`created_at`, or `updated_at` are missing, the helper fills them in. Updating an
+existing id preserves the existing `created_at` when the caller does not provide
+one, and list helpers return records newest first by `updated_at`.
+
 ## Render Setup
 
 For Render, create a Persistent Disk on the web service and mount it at a stable
@@ -71,4 +95,3 @@ root came from `AEROSIM_STORAGE_DIR`. Route code can also call
 - This foundation does not change API routes by itself. Route integration should
   import `get_storage()`, `get_storage_root()`, or `storage_status()` and map API
   resources into the safe namespaces.
-

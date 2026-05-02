@@ -35,6 +35,8 @@ export type CampaignValidation = {
   estimatedRuns: number;
 };
 
+export type CampaignIssueMap = Partial<Record<keyof CampaignDesignerDraft | "dispersions" | "batch", CampaignValidationIssue[]>>;
+
 export type CampaignSummaryRow = {
   label: string;
   value: string;
@@ -44,6 +46,18 @@ export type CampaignPlanSummary = {
   title: string;
   description: string;
   rows: CampaignSummaryRow[];
+};
+
+export type CampaignPlanModel = {
+  kind: CampaignPlanKind;
+  label: string;
+  payload: CampaignActionPayload;
+  validation: CampaignValidation;
+  summary: CampaignPlanSummary;
+  issueMap: CampaignIssueMap;
+  canLaunch: boolean;
+  runCountLabel: string;
+  launchRouteHint: string;
 };
 
 export const DEFAULT_FAULT_OPTIONS = [
@@ -64,6 +78,9 @@ export const CAMPAIGN_KIND_LABELS: Record<CampaignPlanKind, string> = {
 };
 
 const DEFAULT_SWEEP_VALUES = "0.82,0.86";
+const MONTE_CARLO_SAMPLE_LIMIT = 50;
+const SWEEP_RUN_LIMIT = 100;
+const FAULT_RUN_LIMIT = 50;
 const DECIMAL_VALUE_PATTERN = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 const DOTTED_PATH_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/;
 
@@ -144,13 +161,40 @@ export function buildCampaignActionPayload(draft: CampaignDesignerDraft): Campai
   };
 }
 
+export function estimateCampaignRuns(draft: CampaignDesignerDraft, options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}): number {
+  if (draft.kind === "batch") {
+    return options.scenarios?.length ?? 0;
+  }
+  if (draft.kind === "monte_carlo") {
+    return Number.isInteger(draft.samples) ? Math.max(0, draft.samples) : 0;
+  }
+  if (draft.kind === "sweep") {
+    return parseSweepValues(draft.sweepValues).length;
+  }
+  const faults = parseCsvList(draft.faultText);
+  return faults.length || options.faultOptions?.length || DEFAULT_FAULT_OPTIONS.length;
+}
+
+export function issueMapFromValidation(validation: CampaignValidation): CampaignIssueMap {
+  const issueMap: CampaignIssueMap = {};
+  for (const issue of [...validation.errors, ...validation.warnings]) {
+    const key = issue.field as keyof CampaignIssueMap;
+    issueMap[key] = [...(issueMap[key] ?? []), issue];
+  }
+  return issueMap;
+}
+
 export function validateCampaignDraft(draft: CampaignDesignerDraft, options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}): CampaignValidation {
   const errors: CampaignValidationIssue[] = [];
   const warnings: CampaignValidationIssue[] = [];
   const scenarioIds = new Set((options.scenarios ?? []).map((scenario) => scenario.id));
   const faultOptions = options.faultOptions?.length ? options.faultOptions : DEFAULT_FAULT_OPTIONS;
   const knownFaults = new Set(faultOptions);
-  let estimatedRuns = 1;
+  let estimatedRuns = estimateCampaignRuns(draft, { scenarios: options.scenarios, faultOptions });
+
+  if (draft.kind === "batch" && options.scenarios && options.scenarios.length === 0) {
+    warnings.push({ field: "batch", message: "No scenario index is loaded yet; the backend batch action will still use its configured scenario directory." });
+  }
 
   if (draft.kind !== "batch") {
     if (!draft.scenarioId) {
@@ -161,9 +205,8 @@ export function validateCampaignDraft(draft: CampaignDesignerDraft, options: { s
   }
 
   if (draft.kind === "monte_carlo") {
-    estimatedRuns = Number.isFinite(draft.samples) ? draft.samples : 0;
-    if (!Number.isInteger(draft.samples) || draft.samples < 1 || draft.samples > 50) {
-      errors.push({ field: "samples", message: "Samples must be an integer from 1 to 50." });
+    if (!Number.isInteger(draft.samples) || draft.samples < 1 || draft.samples > MONTE_CARLO_SAMPLE_LIMIT) {
+      errors.push({ field: "samples", message: `Samples must be an integer from 1 to ${MONTE_CARLO_SAMPLE_LIMIT}.` });
     }
     if (!Number.isInteger(draft.seed)) {
       errors.push({ field: "seed", message: "Seed must be an integer." });
@@ -182,7 +225,6 @@ export function validateCampaignDraft(draft: CampaignDesignerDraft, options: { s
   if (draft.kind === "sweep") {
     const parameter = draft.sweepParameter.trim();
     const values = parseSweepValues(draft.sweepValues);
-    estimatedRuns = values.length;
     if (!parameter) {
       errors.push({ field: "sweepParameter", message: "Enter a scenario parameter path." });
     } else if (!DOTTED_PATH_PATTERN.test(parameter)) {
@@ -194,8 +236,8 @@ export function validateCampaignDraft(draft: CampaignDesignerDraft, options: { s
     if (values.length === 1) {
       warnings.push({ field: "sweepValues", message: "Only one value is listed, so this will behave like a single scenario run." });
     }
-    if (!Number.isInteger(draft.sweepMaxRuns) || draft.sweepMaxRuns < 1 || draft.sweepMaxRuns > 100) {
-      errors.push({ field: "sweepMaxRuns", message: "Max runs must be an integer from 1 to 100." });
+    if (!Number.isInteger(draft.sweepMaxRuns) || draft.sweepMaxRuns < 1 || draft.sweepMaxRuns > SWEEP_RUN_LIMIT) {
+      errors.push({ field: "sweepMaxRuns", message: `Max runs must be an integer from 1 to ${SWEEP_RUN_LIMIT}.` });
     } else if (values.length > draft.sweepMaxRuns) {
       errors.push({ field: "sweepValues", message: `The sweep expands to ${values.length} runs, above max runs ${draft.sweepMaxRuns}.` });
     }
@@ -203,13 +245,12 @@ export function validateCampaignDraft(draft: CampaignDesignerDraft, options: { s
 
   if (draft.kind === "fault_campaign") {
     const faults = parseCsvList(draft.faultText);
-    estimatedRuns = faults.length || faultOptions.length;
     const unknown = faults.filter((fault) => !knownFaults.has(fault));
     if (unknown.length) {
       errors.push({ field: "faultText", message: `Unknown fault name${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.` });
     }
-    if (!Number.isInteger(draft.faultMaxRuns) || draft.faultMaxRuns < 1 || draft.faultMaxRuns > 50) {
-      errors.push({ field: "faultMaxRuns", message: "Max runs must be an integer from 1 to 50." });
+    if (!Number.isInteger(draft.faultMaxRuns) || draft.faultMaxRuns < 1 || draft.faultMaxRuns > FAULT_RUN_LIMIT) {
+      errors.push({ field: "faultMaxRuns", message: `Max runs must be an integer from 1 to ${FAULT_RUN_LIMIT}.` });
     } else if (estimatedRuns > draft.faultMaxRuns) {
       errors.push({ field: "faultText", message: `The fault plan expands to ${estimatedRuns} runs, above max runs ${draft.faultMaxRuns}.` });
     }
@@ -221,8 +262,13 @@ export function validateCampaignDraft(draft: CampaignDesignerDraft, options: { s
   return { valid: errors.length === 0, errors, warnings, estimatedRuns: Math.max(estimatedRuns, 0) };
 }
 
+export function runCountLabel(estimatedRuns: number): string {
+  return `${estimatedRuns} planned run${estimatedRuns === 1 ? "" : "s"}`;
+}
+
 export function summarizeCampaignPlan(draft: CampaignDesignerDraft, scenarios: ScenarioSummary[] = [], faultOptions = DEFAULT_FAULT_OPTIONS): CampaignPlanSummary {
   const scenario = scenarioLabel(scenarios, draft.scenarioId);
+  const estimatedRuns = estimateCampaignRuns(draft, { scenarios, faultOptions });
   if (draft.kind === "batch") {
     return {
       title: "Batch scenario suite",
@@ -230,14 +276,14 @@ export function summarizeCampaignPlan(draft: CampaignDesignerDraft, scenarios: S
       rows: [
         { label: "Action", value: "batch" },
         { label: "Scenario source", value: "examples/scenarios" },
-        { label: "Estimated runs", value: scenarios.length ? String(scenarios.length) : "Loaded scenario count" }
+        { label: "Estimated runs", value: scenarios.length ? String(estimatedRuns) : "Backend scenario directory" }
       ]
     };
   }
   if (draft.kind === "monte_carlo") {
     return {
       title: `${scenario} Monte Carlo`,
-      description: `Runs ${draft.samples} seeded sample${draft.samples === 1 ? "" : "s"} with mass and wind dispersions.`,
+      description: `Runs ${estimatedRuns} seeded sample${estimatedRuns === 1 ? "" : "s"} with mass and wind dispersions.`,
       rows: [
         { label: "Action", value: "monte_carlo" },
         { label: "Scenario", value: scenario },
@@ -252,7 +298,7 @@ export function summarizeCampaignPlan(draft: CampaignDesignerDraft, scenarios: S
     const values = parseSweepValues(draft.sweepValues);
     return {
       title: `${scenario} parameter sweep`,
-      description: `Runs ${values.length} case${values.length === 1 ? "" : "s"} across ${draft.sweepParameter.trim() || "an unset parameter"}.`,
+      description: `Runs ${estimatedRuns} case${estimatedRuns === 1 ? "" : "s"} across ${draft.sweepParameter.trim() || "an unset parameter"}.`,
       rows: [
         { label: "Action", value: "sweep" },
         { label: "Scenario", value: scenario },
@@ -265,7 +311,7 @@ export function summarizeCampaignPlan(draft: CampaignDesignerDraft, scenarios: S
   const faults = parseCsvList(draft.faultText);
   return {
     title: `${scenario} fault campaign`,
-    description: `Runs ${faults.length || faultOptions.length} fault case${(faults.length || faultOptions.length) === 1 ? "" : "s"} through the existing fault campaign action.`,
+    description: `Runs ${estimatedRuns} fault case${estimatedRuns === 1 ? "" : "s"} through the existing fault campaign action.`,
     rows: [
       { label: "Action", value: "fault_campaign" },
       { label: "Scenario", value: scenario },
@@ -273,4 +319,42 @@ export function summarizeCampaignPlan(draft: CampaignDesignerDraft, scenarios: S
       { label: "Max runs", value: String(draft.faultMaxRuns) }
     ]
   };
+}
+
+export function buildCampaignPlanModel(
+  draft: CampaignDesignerDraft,
+  options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}
+): CampaignPlanModel {
+  const scenarios = options.scenarios ?? [];
+  const faultOptions = options.faultOptions?.length ? options.faultOptions : DEFAULT_FAULT_OPTIONS;
+  const validation = validateCampaignDraft(draft, { scenarios, faultOptions });
+  const payload = buildCampaignActionPayload(draft);
+  const summary = summarizeCampaignPlan(draft, scenarios, faultOptions);
+  return {
+    kind: draft.kind,
+    label: CAMPAIGN_KIND_LABELS[draft.kind],
+    payload,
+    validation,
+    summary,
+    issueMap: issueMapFromValidation(validation),
+    canLaunch: validation.valid,
+    runCountLabel: runCountLabel(validation.estimatedRuns),
+    launchRouteHint: `/api/jobs/${payload.action} or /api/actions/${payload.action}`
+  };
+}
+
+export function buildBatchCampaignModel(draft: CampaignDesignerDraft, options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}): CampaignPlanModel {
+  return buildCampaignPlanModel({ ...draft, kind: "batch" }, options);
+}
+
+export function buildMonteCarloCampaignModel(draft: CampaignDesignerDraft, options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}): CampaignPlanModel {
+  return buildCampaignPlanModel({ ...draft, kind: "monte_carlo" }, options);
+}
+
+export function buildSweepCampaignModel(draft: CampaignDesignerDraft, options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}): CampaignPlanModel {
+  return buildCampaignPlanModel({ ...draft, kind: "sweep" }, options);
+}
+
+export function buildFaultCampaignModel(draft: CampaignDesignerDraft, options: { scenarios?: ScenarioSummary[]; faultOptions?: string[] } = {}): CampaignPlanModel {
+  return buildCampaignPlanModel({ ...draft, kind: "fault_campaign" }, options);
 }

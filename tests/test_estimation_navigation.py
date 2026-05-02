@@ -1,3 +1,5 @@
+from pathlib import Path
+import tempfile
 import unittest
 
 import numpy as np
@@ -7,6 +9,8 @@ from aerosim6dof.estimation import (
     build_navigation_telemetry,
     gnss_quality_score,
 )
+from aerosim6dof.estimation.navigation_filter import load_navigation_telemetry_from_run
+from aerosim6dof.reports.csv_writer import write_csv
 
 
 class EstimationNavigationTests(unittest.TestCase):
@@ -200,6 +204,134 @@ class EstimationNavigationTests(unittest.TestCase):
         self.assertIn("sensor_gps_z_m", telemetry[0])
         self.assertIn("gps_position_error_m", telemetry[0])
         self.assertIn("velocity_error_mps", telemetry[0])
+
+    def test_build_navigation_telemetry_emits_api_ready_aliases(self):
+        telemetry = build_navigation_telemetry(
+            [
+                {
+                    "time_s": 0.0,
+                    "x_m": 0.0,
+                    "y_m": 0.0,
+                    "altitude_m": 10.0,
+                    "vx_mps": 3.0,
+                    "vy_mps": 4.0,
+                    "vz_mps": 0.0,
+                    "gps_valid": 1.0,
+                    "gps_x_m": 0.0,
+                    "gps_y_m": 0.0,
+                    "gps_z_m": 10.0,
+                    "gps_vx_mps": 3.0,
+                    "gps_vy_mps": 4.0,
+                    "gps_vz_mps": 0.0,
+                    "unknown_future_sensor": "ignored",
+                }
+            ]
+        )
+
+        row = telemetry[0]
+        self.assertEqual(row["estimate_altitude_m"], row["estimate_z_m"])
+        self.assertAlmostEqual(row["estimate_speed_mps"], 5.0)
+        self.assertEqual(row["estimate_position_error_m"], row["position_error_m"])
+        self.assertEqual(row["estimate_velocity_error_mps"], row["velocity_error_mps"])
+        self.assertEqual(row["gnss_quality"], row["gnss_quality_score"])
+        self.assertEqual(row["gps_valid"], 1.0)
+
+    def test_load_navigation_telemetry_from_run_uses_sensors_truth_and_stride(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            write_csv(
+                run_dir / "sensors.csv",
+                [
+                    {"time_s": 0.0, "sensor_time_s": 0.0, "gps_valid": 1.0, "gps_x_m": 0.0, "gps_y_m": 0.0, "gps_z_m": 10.0},
+                    {"time_s": 1.0, "sensor_time_s": 1.0, "gps_valid": 1.0, "gps_x_m": 1.0, "gps_y_m": 0.0, "gps_z_m": 10.5},
+                    {
+                        "time_s": 2.0,
+                        "sensor_time_s": 2.0,
+                        "gps_valid": 1.0,
+                        "gps_x_m": 2.0,
+                        "gps_y_m": 0.0,
+                        "gps_z_m": 11.0,
+                        "unexpected_sensor_column": 123.0,
+                    },
+                ],
+            )
+            write_csv(
+                run_dir / "truth.csv",
+                [
+                    {"time_s": 0.0, "x_m": 0.0, "y_m": 0.0, "altitude_m": 10.0, "vx_mps": 1.0, "vy_mps": 0.0, "vz_mps": 0.5},
+                    {"time_s": 1.0, "x_m": 1.0, "y_m": 0.0, "altitude_m": 10.5, "vx_mps": 1.0, "vy_mps": 0.0, "vz_mps": 0.5},
+                    {"time_s": 2.0, "x_m": 2.0, "y_m": 0.0, "altitude_m": 11.0, "vx_mps": 1.0, "vy_mps": 0.0, "vz_mps": 0.5},
+                ],
+            )
+
+            payload = load_navigation_telemetry_from_run(run_dir, stride=2)
+
+        self.assertEqual(payload["summary"]["source"], "sensors_truth")
+        self.assertEqual(payload["summary"]["input_row_count"], 3)
+        self.assertEqual(payload["summary"]["row_count"], 2)
+        self.assertEqual(payload["summary"]["stride"], 2)
+        self.assertEqual(payload["summary"]["source_files"], ["sensors.csv", "truth.csv"])
+        channel_keys = [channel["key"] for channel in payload["channels"]]
+        for key in (
+            "time_s",
+            "estimate_x_m",
+            "estimate_y_m",
+            "estimate_z_m",
+            "estimate_vx_mps",
+            "estimate_vy_mps",
+            "estimate_vz_mps",
+            "estimate_altitude_m",
+            "estimate_speed_mps",
+            "estimate_position_error_m",
+            "estimate_velocity_error_mps",
+            "gnss_quality",
+            "covariance_trace",
+            "gps_valid",
+        ):
+            self.assertIn(key, payload["rows"][0])
+            self.assertIn(key, channel_keys)
+
+    def test_load_navigation_telemetry_from_run_falls_back_to_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = Path(tmp)
+            write_csv(
+                run_dir / "history.csv",
+                [
+                    {
+                        "time_s": 0.0,
+                        "x_m": 5.0,
+                        "y_m": 1.0,
+                        "altitude_m": 50.0,
+                        "vx_mps": 2.0,
+                        "vy_mps": 0.0,
+                        "vz_mps": 0.0,
+                        "gps_x_m": 5.0,
+                        "gps_y_m": 1.0,
+                        "gps_z_m": 50.0,
+                        "gps_valid": 1.0,
+                    }
+                ],
+            )
+
+            payload = load_navigation_telemetry_from_run(run_dir)
+
+        self.assertEqual(payload["summary"]["source"], "history")
+        self.assertEqual(payload["summary"]["source_files"], ["history.csv"])
+        self.assertEqual(payload["summary"]["row_count"], 1)
+        self.assertEqual(payload["rows"][0]["estimate_altitude_m"], payload["rows"][0]["estimate_z_m"])
+
+    def test_packaged_nominal_web_run_smoke_when_available(self):
+        run_dir = Path("outputs/web_runs/seed_scenario_suite/nominal_ascent")
+        required = [run_dir / "sensors.csv", run_dir / "truth.csv", run_dir / "history.csv"]
+        if not all(path.exists() for path in required):
+            self.skipTest("packaged nominal web run is not available")
+
+        payload = load_navigation_telemetry_from_run(run_dir, stride=200)
+
+        self.assertGreater(payload["summary"]["row_count"], 0)
+        self.assertEqual(payload["summary"]["source"], "sensors_truth")
+        self.assertIsNotNone(payload["summary"]["max_estimate_position_error_m"])
+        self.assertTrue(all(np.isfinite(row["covariance_trace"]) for row in payload["rows"]))
 
 
 if __name__ == "__main__":

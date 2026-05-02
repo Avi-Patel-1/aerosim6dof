@@ -52,11 +52,19 @@ class ExamplesGalleryTests(unittest.TestCase):
             cards = self.cards_by_id(examples_root)
 
         self.assertEqual(cards["nominal_ascent"]["title"], "Nominal Ascent")
+        self.assertEqual(cards["nominal_ascent"]["category"], "Baseline")
         self.assertEqual(cards["nominal_ascent"]["difficulty"], "Beginner")
         self.assertIn("baseline", cards["nominal_ascent"]["tags"])
         self.assertIn("pitch_deg", cards["nominal_ascent"]["primary_metrics"])
+        self.assertIn("pitch-program", cards["nominal_ascent"]["tags"])
+        self.assertIn("pitch-program", cards["nominal_ascent"]["suggested_next_edit"])
+        self.assertEqual(cards["nominal_ascent"]["run_payload"], {"action": "run", "params": {"scenario_id": "nominal_ascent"}})
+        self.assertEqual(cards["nominal_ascent"]["clone_payload"]["source_scenario_id"], "nominal_ascent")
+        self.assertEqual(cards["nominal_ascent"]["clone_payload"]["scenario_path"], "examples/scenarios/nominal_ascent.json")
+        self.assertEqual(cards["nominal_ascent"]["edit_payload"]["scenario_id"], "nominal_ascent")
         self.assertTrue(cards["nominal_ascent"]["can_run"])
         self.assertEqual(cards["target_intercept"]["title"], "Target Intercept")
+        self.assertEqual(cards["target_intercept"]["category"], "Engagement")
         self.assertIn("intercept", cards["target_intercept"]["tags"])
         self.assertIn("target_distance_m", cards["target_intercept"]["primary_metrics"])
 
@@ -93,11 +101,33 @@ class ExamplesGalleryTests(unittest.TestCase):
 
         card = cards["custom_loiter_demo"]
         self.assertEqual(card["title"], "Custom Loiter Demo")
+        self.assertEqual(card["category"], "Guidance")
         self.assertIn("altitude-hold", card["tags"])
         self.assertEqual(card["difficulty"], "Intermediate")
         self.assertIn("summary.json", card["expected_outputs"])
+        self.assertEqual(card["run_payload"]["params"], {"scenario_id": "custom_loiter_demo"})
+        self.assertEqual(card["clone_payload"]["suggested_name"], "custom_loiter_demo_copy")
+        self.assertIn("altitude hold", card["suggested_next_edit"])
         self.assertTrue(card["can_run"])
         self.assertTrue(all(not Path(card["scenario_path"]).is_absolute() for card in cards.values()))
+
+    def test_checked_in_scenarios_have_stable_curated_cards_without_outputs(self) -> None:
+        scenario_ids = {path.stem for path in Path("examples/scenarios").glob("*.json")}
+        cards = self.cards_by_id(Path("examples"))
+
+        self.assertEqual(set(cards), scenario_ids)
+        self.assertGreaterEqual(len(cards), 10)
+        for scenario_id, card in cards.items():
+            self.assertEqual(card["id"], scenario_id)
+            self.assertEqual(card["scenario_path"], f"examples/scenarios/{scenario_id}.json")
+            self.assertTrue(card["category"])
+            self.assertTrue(card["description"])
+            self.assertTrue(card["suggested_next_edit"])
+            self.assertTrue(card["expected_outputs"])
+            self.assertEqual(card["run_payload"]["params"]["scenario_id"], scenario_id)
+            self.assertEqual(card["clone_payload"]["source_scenario_id"], scenario_id)
+            self.assertEqual(card["edit_payload"]["scenario_path"], card["scenario_path"])
+            self.assertNotIn("outputs/", " ".join(card["expected_outputs"]))
 
     def test_weird_scenario_shape_does_not_crash(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

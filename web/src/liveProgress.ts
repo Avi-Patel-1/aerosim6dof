@@ -19,6 +19,16 @@ export type LiveProgressState = {
 
 export type LiveProgressMap = Record<string, LiveProgressState>;
 
+export type LiveProgressControlRequest = {
+  job_id: string;
+  action?: string;
+  method: "POST";
+  path: string;
+  enabled: boolean;
+  phase: LiveProgressPhase;
+  body: Record<string, unknown>;
+};
+
 const TERMINAL_PHASES = new Set<LiveProgressPhase>(["completed", "failed", "cancelled"]);
 
 const PHASE_ALIASES: Record<string, LiveProgressPhase> = {
@@ -81,6 +91,39 @@ export function normalizeLivePercent(value: unknown, phase?: unknown): number {
 
 export function isTerminalProgressPhase(value: unknown): boolean {
   return TERMINAL_PHASES.has(normalizeLivePhase(value));
+}
+
+export function canCancel(state: Pick<LiveProgressState, "job_id" | "phase" | "cancellable"> | null | undefined): boolean {
+  return Boolean(state?.job_id && state.cancellable && !isTerminalProgressPhase(state.phase));
+}
+
+export function canRetry(state: Pick<LiveProgressState, "job_id" | "action" | "phase"> | null | undefined): boolean {
+  const phase = normalizeLivePhase(state?.phase);
+  return Boolean(state?.job_id && state.action && (phase === "failed" || phase === "cancelled"));
+}
+
+export function buildCancelRequest(state: Pick<LiveProgressState, "job_id" | "phase" | "cancellable">): LiveProgressControlRequest {
+  return {
+    job_id: state.job_id,
+    method: "POST",
+    path: state.job_id ? `/api/jobs/${encodeURIComponent(state.job_id)}/cancel` : "",
+    enabled: canCancel(state),
+    phase: normalizeLivePhase(state.phase),
+    body: { job_id: state.job_id }
+  };
+}
+
+export function buildRetryRequest(state: Pick<LiveProgressState, "job_id" | "action" | "phase">): LiveProgressControlRequest {
+  const action = asString(state.action);
+  return {
+    job_id: state.job_id,
+    action,
+    method: "POST",
+    path: state.job_id ? `/api/jobs/${encodeURIComponent(state.job_id)}/retry` : "",
+    enabled: canRetry(state),
+    phase: normalizeLivePhase(state.phase),
+    body: { job_id: state.job_id, action }
+  };
 }
 
 export function parseLiveProgressPayload(data: string | unknown): LiveProgressState | null {

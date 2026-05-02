@@ -3,15 +3,20 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   DEFAULT_REPORT_STUDIO_SECTIONS,
   REPORT_STUDIO_SECTION_DEFINITIONS,
+  availableReportStudioTelemetryChannels,
+  buildReportStudioReportSummary,
   buildReportStudioExportPayload,
   buildReportStudioExportRequest,
   defaultReportStudioSections,
+  defaultReportStudioTelemetryChannels,
   describeReportStudioSections,
+  normalizeReportStudioTelemetryChannels,
   normalizeReportStudioSections,
   type ReportStudioExportFormat,
   type ReportStudioExportPayload,
   type ReportStudioExportRequest,
   type ReportStudioPacket,
+  type ReportStudioReadySummary,
   type ReportStudioSectionDescription,
   type ReportStudioSectionId
 } from "../reportStudio";
@@ -19,10 +24,17 @@ import {
 type ReportStudioProps = {
   packet?: ReportStudioPacket | null;
   selectedSections?: ReportStudioSectionId[];
+  selectedTelemetryChannels?: string[];
   exportFormat?: ReportStudioExportFormat;
   onSelectionChange?: (sections: ReportStudioSectionId[]) => void;
+  onTelemetryChannelsChange?: (channels: string[]) => void;
   onExportFormatChange?: (format: ReportStudioExportFormat) => void;
   onExportRequest?: (request: ReportStudioExportRequest, payload: ReportStudioExportPayload | null) => void;
+  onPayloadReady?: (
+    request: ReportStudioExportRequest,
+    payload: ReportStudioExportPayload | null,
+    summary: ReportStudioReadySummary
+  ) => void;
 };
 
 const SECTION_ICONS: Record<ReportStudioSectionId, ReactNode> = {
@@ -39,13 +51,18 @@ const EXPORT_FORMATS: ReportStudioExportFormat[] = ["json", "markdown", "html"];
 export function ReportStudio({
   packet,
   selectedSections,
+  selectedTelemetryChannels,
   exportFormat,
   onSelectionChange,
+  onTelemetryChannelsChange,
   onExportFormatChange,
-  onExportRequest
+  onExportRequest,
+  onPayloadReady
 }: ReportStudioProps) {
   const packetDefaults = useMemo(() => defaultReportStudioSections(packet), [packet]);
+  const telemetryDefaults = useMemo(() => defaultReportStudioTelemetryChannels(packet), [packet]);
   const [localSections, setLocalSections] = useState<ReportStudioSectionId[]>(packetDefaults);
+  const [localTelemetryChannels, setLocalTelemetryChannels] = useState<string[]>(telemetryDefaults);
   const [localFormat, setLocalFormat] = useState<ReportStudioExportFormat>(exportFormat ?? "json");
 
   useEffect(() => {
@@ -55,26 +72,51 @@ export function ReportStudio({
   }, [packetDefaults, selectedSections]);
 
   useEffect(() => {
+    if (!selectedTelemetryChannels) {
+      setLocalTelemetryChannels(telemetryDefaults);
+    }
+  }, [telemetryDefaults, selectedTelemetryChannels]);
+
+  useEffect(() => {
     if (exportFormat) {
       setLocalFormat(exportFormat);
     }
   }, [exportFormat]);
 
   const activeSections = normalizeReportStudioSections(selectedSections ?? localSections, DEFAULT_REPORT_STUDIO_SECTIONS);
+  const activeTelemetryChannels = normalizeReportStudioTelemetryChannels(
+    selectedTelemetryChannels ?? localTelemetryChannels,
+    packet
+  );
   const activeFormat = exportFormat ?? localFormat;
+  const availableTelemetryChannels = useMemo(() => availableReportStudioTelemetryChannels(packet), [packet]);
   const sectionDescriptions = useMemo(
     () => describeReportStudioSections(packet, activeSections),
     [packet, activeSections]
   );
   const selectedDescriptions = sectionDescriptions.filter((section) => section.included);
   const request = useMemo(
-    () => buildReportStudioExportRequest({ packet, sections: activeSections, format: activeFormat }),
-    [packet, activeSections, activeFormat]
+    () =>
+      buildReportStudioExportRequest({
+        packet,
+        sections: activeSections,
+        telemetryChannels: activeTelemetryChannels,
+        format: activeFormat
+      }),
+    [packet, activeSections, activeTelemetryChannels, activeFormat]
   );
   const exportPayload = useMemo(
     () => (packet ? buildReportStudioExportPayload(packet, request) : null),
     [packet, request]
   );
+  const reportSummary = useMemo(
+    () => buildReportStudioReportSummary(packet, activeSections, activeTelemetryChannels),
+    [packet, activeSections, activeTelemetryChannels]
+  );
+
+  useEffect(() => {
+    onPayloadReady?.(request, exportPayload, reportSummary);
+  }, [request, exportPayload, reportSummary, onPayloadReady]);
 
   function updateSections(nextSections: ReportStudioSectionId[]) {
     const normalized = normalizeReportStudioSections(nextSections, DEFAULT_REPORT_STUDIO_SECTIONS);
@@ -82,6 +124,14 @@ export function ReportStudio({
       setLocalSections(normalized);
     }
     onSelectionChange?.(normalized);
+  }
+
+  function updateTelemetryChannels(nextChannels: string[]) {
+    const normalized = normalizeReportStudioTelemetryChannels(nextChannels, packet);
+    if (!selectedTelemetryChannels) {
+      setLocalTelemetryChannels(normalized);
+    }
+    onTelemetryChannelsChange?.(normalized);
   }
 
   function toggleSection(section: ReportStudioSectionId) {
@@ -102,6 +152,19 @@ export function ReportStudio({
       setLocalFormat(format);
     }
     onExportFormatChange?.(format);
+  }
+
+  function toggleTelemetryChannel(channelId: string) {
+    const selected = new Set(activeTelemetryChannels);
+    if (selected.has(channelId)) {
+      if (selected.size === 1) {
+        return;
+      }
+      selected.delete(channelId);
+    } else {
+      selected.add(channelId);
+    }
+    updateTelemetryChannels(availableTelemetryChannels.map((channel) => channel.id).filter((id) => selected.has(id)));
   }
 
   function requestExport() {
@@ -136,6 +199,7 @@ export function ReportStudio({
 
       <div className="report-studio-grid">
         <section className="report-studio-section-picker" aria-label="Packet sections">
+          <ReportStudioSummaryCard summary={reportSummary} />
           {sectionDescriptions.map((section) => (
             <button
               type="button"
@@ -152,6 +216,35 @@ export function ReportStudio({
               {section.included ? <Check size={16} /> : <Square size={16} />}
             </button>
           ))}
+          {availableTelemetryChannels.length > 0 && activeSections.includes("telemetry") ? (
+            <div className="report-studio-card">
+              <div>
+                <span>channels</span>
+                <strong>Telemetry Selection</strong>
+              </div>
+              {availableTelemetryChannels.map((channel) => (
+                <button
+                  type="button"
+                  className={`report-studio-section ${activeTelemetryChannels.includes(channel.id) ? "selected" : ""}`}
+                  aria-pressed={activeTelemetryChannels.includes(channel.id)}
+                  key={channel.id}
+                  onClick={() => toggleTelemetryChannel(channel.id)}
+                >
+                  <span className="report-studio-section-icon">
+                    <Gauge size={16} />
+                  </span>
+                  <span>
+                    <strong>{channel.label}</strong>
+                    <small>
+                      {channel.source}.{channel.channel}
+                      {channel.unit ? ` (${channel.unit})` : ""}
+                    </small>
+                  </span>
+                  {activeTelemetryChannels.includes(channel.id) ? <Check size={16} /> : <Square size={16} />}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="report-studio-preview" aria-label="Selected packet sections">
@@ -166,15 +259,39 @@ export function ReportStudio({
           </div>
         </section>
 
-        <section className="report-studio-payload" aria-label="Export request payload">
+        <section className="report-studio-payload" aria-label="Ready export payload">
           <div className="report-studio-preview-head">
-            <h3>Request Payload</h3>
+            <h3>Ready Payload</h3>
             <span>{activeFormat}</span>
           </div>
-          <pre>{JSON.stringify(request, null, 2)}</pre>
+          <pre>{JSON.stringify(exportPayload ?? request, null, 2)}</pre>
         </section>
       </div>
     </section>
+  );
+}
+
+function ReportStudioSummaryCard({ summary }: { summary: ReportStudioReadySummary }) {
+  return (
+    <article className={`report-studio-card ${summary.ready ? "" : "muted"}`}>
+      <div>
+        <span>{summary.ready ? "ready" : "waiting"}</span>
+        <strong>{summary.title}</strong>
+      </div>
+      <p>{summary.subtitle}</p>
+      <dl>
+        <div>
+          <dt>Sections</dt>
+          <dd>
+            {summary.available_section_count}/{summary.section_count}
+          </dd>
+        </div>
+        <div>
+          <dt>Channels</dt>
+          <dd>{summary.telemetry_channel_count}</dd>
+        </div>
+      </dl>
+    </article>
   );
 }
 

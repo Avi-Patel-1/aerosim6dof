@@ -18,7 +18,7 @@ from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
 from aerosim6dof.core.integration import adaptive_rk45_step, rk2_step
 from aerosim6dof.core.quaternions import from_euler, normalize, to_dcm, to_euler
-from aerosim6dof.environment.atmosphere import atmosphere
+from aerosim6dof.environment.atmosphere import AtmosphereModel, atmosphere
 from aerosim6dof.environment.gravity import gravity_magnitude
 from aerosim6dof.environment.terrain import TerrainModel
 from aerosim6dof.environment.wind import WindModel
@@ -189,6 +189,28 @@ class FlightSimTests(unittest.TestCase):
         b = wind.sample(0.5, np.array([0.0, 0.0, 100.0]), 80.0, 0.02).velocity_mps
         self.assertEqual(a.shape, (3,))
         self.assertNotAlmostEqual(float(a[1]), float(b[1]))
+
+    def test_layered_atmosphere_and_power_law_wind_are_runtime_configurable(self):
+        standard = AtmosphereModel().sample(1000.0)
+        weather = AtmosphereModel({"model": "layered", "temperature_offset_k": 8.0, "pressure_scale": 0.97}).sample(1000.0)
+        self.assertNotAlmostEqual(standard.temperature, weather.temperature)
+        self.assertNotAlmostEqual(standard.density, weather.density)
+
+        wind = WindModel(
+            {
+                "steady_mps": [5.0, 0.0, 0.0],
+                "shear": {
+                    "model": "power_law",
+                    "reference_wind_mps": [5.0, 0.0, 0.0],
+                    "reference_altitude_m": 10.0,
+                    "shear_exponent": 0.2,
+                },
+            }
+        )
+        low = wind.deterministic(0.0, np.array([0.0, 0.0, 10.0]))
+        high = wind.deterministic(0.0, np.array([0.0, 0.0, 1000.0]))
+        self.assertAlmostEqual(float(low[0]), 5.0)
+        self.assertGreater(float(high[0]), float(low[0]))
 
     def test_actuator_rate_limit_and_failure(self):
         a = RateLimitedActuator(limit=1.0, rate_limit=0.5)

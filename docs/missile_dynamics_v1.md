@@ -1,6 +1,6 @@
 # Missile Dynamics V1
 
-`aerosim6dof.simulation.missile_dynamics` is a standalone foundation for later interceptor integration. It does not modify `InterceptorSuite`, the runner, or the scenario schema.
+`aerosim6dof.simulation.missile_dynamics` provides the production missile-runtime path used by `InterceptorSuite` when an interceptor explicitly opts in with `"dynamics_model": "missile_dynamics_v1"` or `"model": "missile"`. Interceptors without that opt-in continue to use the legacy kinematic model.
 
 ## Scope
 
@@ -34,9 +34,9 @@ Lower-level primitives are available as `measure_seeker`, `proportional_navigati
 
 ## Scenario Compatibility
 
-`examples/scenarios/missile_intercept_demo.json` keeps the existing scenario shape and adds an optional top-level `missile` block. Current runners ignore that block, so existing workflows remain compatible. Future integration can map an interceptor entry with `"dynamics_model": "missile_dynamics_v1"` to `MissileDynamicsConfig.from_dict(scenario.raw["missile"])`.
+`examples/scenarios/missile_intercept_demo.json` keeps the existing scenario shape and adds an optional top-level `missile` block. `InterceptorSuite.from_scenario(...)` reads that block as the shared missile configuration seed for interceptor entries with `"dynamics_model": "missile_dynamics_v1"` or `"model": "missile"`.
 
-The existing `interceptors` list is still present for current telemetry compatibility. The new `missile` block is only a configuration seed for the standalone module.
+The existing `interceptors` list remains the runtime owner. Missile-mode entries can override shared settings with a nested `missile` block or with direct missile fields such as `seeker`, `guidance`, `motor`, `actuator`, `fuze`, `dry_mass_kg`, or `gravity_mps2`. Existing kinematic fields such as `initial_position_m`, `initial_velocity_mps`, `launch_time_s`, `target_id`, and `proximity_fuze_m` still apply.
 
 ## Telemetry
 
@@ -48,6 +48,18 @@ The existing `interceptors` list is still present for current telemetry compatib
 - `control_*`: achieved acceleration plus saturation/rate-limit flags.
 - `motor_*`: thrust, mass flow, spool fraction, and phase.
 - `fuze_*`: arming/fuzed flags, status, and closest range.
+
+When merged into interceptor runtime rows, the integrated path adds these flat columns:
+
+- `missile_mode`
+- `seeker_valid`
+- `missile_motor_thrust_n`
+- `missile_motor_mass_flow_kgps`
+- `missile_commanded_accel_mps2`
+- `missile_lateral_accel_mps2`
+- `missile_closing_speed_mps`
+- `missile_fuze_armed`
+- `missile_fuzed`
 
 ## Integration Notes
 

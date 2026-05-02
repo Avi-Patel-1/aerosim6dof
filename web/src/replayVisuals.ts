@@ -207,6 +207,67 @@ export type ReplayVisualFrameDescriptors = {
   contacts: ImpactContactDescriptor[];
 };
 
+export type ReplayAltitudeReferenceDescriptor = {
+  id: "altitude-reference";
+  kind: "altitude-reference";
+  label: string;
+  visible: boolean;
+  currentPoint: ReplayScenePoint;
+  terrainPoint: ReplayScenePoint;
+  clearanceM: number | null;
+  metricLabel: string;
+  color: string;
+  opacity: number;
+  sourceKeys: string[];
+};
+
+export type ReplayEngagementMarkerId = "target" | "interceptor";
+
+export type ReplayEngagementMarkerDescriptor = {
+  id: ReplayEngagementMarkerId;
+  kind: "engagement-marker";
+  label: string;
+  visible: boolean;
+  point: ReplayScenePoint;
+  terrainPoint: ReplayScenePoint;
+  color: string;
+  opacity: number;
+  rangeM: number | null;
+  metricLabel: string;
+  launched?: boolean;
+  sourceKeys: string[];
+};
+
+export type TrailColorLegendDescriptor = Omit<TrailColorDescriptor, "stops">;
+
+export type ReplayOverlayVectorVisibility = Partial<Record<ReplayVectorOverlayId, boolean>>;
+
+export type ReplayOverlayStateOptions = ReplayTransformOptions & {
+  transform?: ReplaySceneTransform;
+  trail?: TrailColorDescriptor;
+  trailLegend?: TrailColorLegendDescriptor;
+  trailMode?: ReplayTrailColorMode;
+  cameraMode?: ReplayCameraPresetId;
+  vectorVisibility?: ReplayOverlayVectorVisibility;
+  showVelocity?: boolean;
+  showAcceleration?: boolean;
+  showWind?: boolean;
+  showSensors?: boolean;
+};
+
+export type ReplayOverlayState = {
+  index: number;
+  sampleCount: number;
+  altitudeReference: ReplayAltitudeReferenceDescriptor;
+  vectors: ReplayVectorOverlayDescriptor[];
+  sensorCones: SensorConeDescriptor[];
+  engagementMarkers: ReplayEngagementMarkerDescriptor[];
+  contacts: ImpactContactDescriptor[];
+  trailLegend: TrailColorLegendDescriptor;
+  cameraMode: ReplayCameraPresetId;
+  cameraLabel: string;
+};
+
 export const DEFAULT_REPLAY_GROUND_Y = -10.28;
 export const DEFAULT_REPLAY_VIEW_EXTENT = 105;
 
@@ -887,6 +948,95 @@ export function buildImpactContactDescriptors(
   ];
 }
 
+export function buildReplayAltitudeReference(
+  row: TelemetryRow | undefined,
+  currentPoint: ReplayScenePoint,
+  terrainPoint: ReplayScenePoint
+): ReplayAltitudeReferenceDescriptor {
+  const altitudeM = telemetryOptionalNumber(row, "altitude_m");
+  const terrainM = telemetryOptionalNumber(row, "terrain_elevation_m") ?? 0;
+  const clearanceM = altitudeM === null ? null : altitudeM - terrainM;
+
+  return {
+    id: "altitude-reference",
+    kind: "altitude-reference",
+    label: "Altitude reference",
+    visible: row !== undefined,
+    currentPoint,
+    terrainPoint,
+    clearanceM,
+    metricLabel: formatMetric(clearanceM, "m", 1),
+    color: REPLAY_VISUAL_COLORS.starlight,
+    opacity: 0.32,
+    sourceKeys: ["altitude_m", "terrain_elevation_m"]
+  };
+}
+
+export function buildEngagementMarkerDescriptors(
+  row: TelemetryRow | undefined,
+  currentPoint: ReplayScenePoint,
+  terrainPoint: ReplayScenePoint,
+  transform: ReplaySceneTransform
+): ReplayEngagementMarkerDescriptor[] {
+  const target = row ? optionalPointFromRow(row, "target_x_m", "target_y_m", "target_z_m") : null;
+  const interceptor = row ? optionalPointFromRow(row, "interceptor_x_m", "interceptor_y_m", "interceptor_z_m") : null;
+  const targetRangeM = telemetryOptionalNumber(row, "target_range_m");
+  const interceptorRangeM = telemetryOptionalNumber(row, "interceptor_range_m");
+  const interceptorLaunched = telemetryNumber(row, "interceptor_launched") > 0.5;
+  const markers: ReplayEngagementMarkerDescriptor[] = [];
+
+  if (target) {
+    markers.push({
+      id: "target",
+      kind: "engagement-marker",
+      label: "Target",
+      visible: true,
+      point: telemetryPointToScene(target, transform),
+      terrainPoint,
+      color: REPLAY_VISUAL_COLORS.ghostBlue,
+      opacity: 0.86,
+      rangeM: targetRangeM,
+      metricLabel: formatMetric(targetRangeM, "m", 1),
+      sourceKeys: ["target_x_m", "target_y_m", "target_z_m", "target_range_m"]
+    });
+  }
+
+  if (interceptor) {
+    markers.push({
+      id: "interceptor",
+      kind: "engagement-marker",
+      label: "Interceptor",
+      visible: interceptorLaunched,
+      point: telemetryPointToScene(interceptor, transform),
+      terrainPoint,
+      color: REPLAY_VISUAL_COLORS.starlight,
+      opacity: 0.82,
+      rangeM: interceptorRangeM,
+      metricLabel: formatMetric(interceptorRangeM, "m", 1),
+      launched: interceptorLaunched,
+      sourceKeys: ["interceptor_x_m", "interceptor_y_m", "interceptor_z_m", "interceptor_range_m", "interceptor_launched"]
+    });
+  }
+
+  if (!markers.length && row === undefined) {
+    markers.push({
+      id: "target",
+      kind: "engagement-marker",
+      label: "Target",
+      visible: false,
+      point: currentPoint,
+      terrainPoint,
+      color: REPLAY_VISUAL_COLORS.ghostBlue,
+      opacity: 0.5,
+      rangeM: null,
+      metricLabel: "--",
+      sourceKeys: ["target_x_m", "target_y_m", "target_z_m", "target_range_m"]
+    });
+  }
+
+  return markers;
+}
+
 export function getTrailColorProfile(mode: ReplayTrailColorMode): TrailColorProfile {
   return REPLAY_TRAIL_COLOR_PROFILES[mode] ?? REPLAY_TRAIL_COLOR_PROFILES.plain;
 }
@@ -902,21 +1052,12 @@ export function colorForTrailRatio(profile: TrailColorProfile, ratio: number): s
   return lerpHexColor(colors[1], colors[2], (ratio - 0.5) * 2);
 }
 
-export function buildTrailColorDescriptor(rows: TelemetryRow[], mode: ReplayTrailColorMode = "plain"): TrailColorDescriptor {
+export function buildTrailColorLegendDescriptor(rows: TelemetryRow[], mode: ReplayTrailColorMode = "plain"): TrailColorLegendDescriptor {
   const profile = getTrailColorProfile(mode);
-  const values = profile.channel ? rows.map((row) => telemetryNumber(row, profile.channel ?? "", 0)) : rows.map(() => 0);
+  const values = trailColorValues(rows, profile);
   const min = values.length ? Math.min(...values) : 0;
   const max = values.length ? Math.max(...values) : 0;
   const span = Math.max(max - min, 1e-9);
-  const stops = values.map((value, index) => {
-    const ratio = profile.channel ? clamp((value - min) / span, 0, 1) : 0;
-    return {
-      index,
-      value,
-      ratio,
-      color: colorForTrailRatio(profile, ratio)
-    };
-  });
   const legendStops: TrailColorLegendStop[] = [0, 0.5, 1].map((ratio) => ({
     ratio,
     color: colorForTrailRatio(profile, ratio),
@@ -928,8 +1069,27 @@ export function buildTrailColorDescriptor(rows: TelemetryRow[], mode: ReplayTrai
     profile,
     min,
     max,
-    stops,
     legendStops
+  };
+}
+
+export function buildTrailColorDescriptor(rows: TelemetryRow[], mode: ReplayTrailColorMode = "plain"): TrailColorDescriptor {
+  const legend = buildTrailColorLegendDescriptor(rows, mode);
+  const values = trailColorValues(rows, legend.profile);
+  const span = Math.max(legend.max - legend.min, 1e-9);
+  const stops = values.map((value, index) => {
+    const ratio = legend.profile.channel ? clamp((value - legend.min) / span, 0, 1) : 0;
+    return {
+      index,
+      value,
+      ratio,
+      color: colorForTrailRatio(legend.profile, ratio)
+    };
+  });
+
+  return {
+    ...legend,
+    stops
   };
 }
 
@@ -939,6 +1099,53 @@ export function getReplayCameraPreset(id: ReplayCameraPresetId): ReplayCameraPre
 
 export function replayCameraPresetOptions(): ReplayCameraPresetMetadata[] {
   return Object.values(REPLAY_CAMERA_PRESETS);
+}
+
+export function buildReplayOverlayState(
+  rows: TelemetryRow[],
+  currentIndex: number,
+  options: ReplayOverlayStateOptions = {}
+): ReplayOverlayState {
+  const transform = options.transform ?? createReplaySceneTransform(rows, options);
+  const index = clampReplayIndex(currentIndex, rows.length);
+  const row = rows[index];
+  const previousRow = rows[Math.max(index - 1, 0)];
+  const currentPoint = telemetryPointToScene(
+    {
+      x_m: telemetryNumber(row, "x_m"),
+      y_m: telemetryNumber(row, "y_m"),
+      altitude_m: telemetryNumber(row, "altitude_m")
+    },
+    transform
+  );
+  const terrainPoint = telemetryPointToScene(
+    {
+      x_m: telemetryNumber(row, "x_m"),
+      y_m: telemetryNumber(row, "y_m"),
+      altitude_m: telemetryNumber(row, "terrain_elevation_m")
+    },
+    transform
+  );
+  const vectorVisibility: ReplayOverlayVectorVisibility = {
+    velocity: options.showVelocity ?? options.vectorVisibility?.velocity ?? true,
+    acceleration: options.showAcceleration ?? options.vectorVisibility?.acceleration ?? false,
+    wind: options.showWind ?? options.vectorVisibility?.wind ?? true
+  };
+  const cameraMode = options.cameraMode ?? "chase";
+  const camera = getReplayCameraPreset(cameraMode);
+
+  return {
+    index,
+    sampleCount: rows.length,
+    altitudeReference: buildReplayAltitudeReference(row, currentPoint, terrainPoint),
+    vectors: buildReplayVectorOverlays(row, previousRow, currentPoint, vectorVisibility),
+    sensorCones: options.showSensors === false ? [] : buildSensorConeDescriptors(row, currentPoint, terrainPoint, transform).filter((sensor) => sensor.visible),
+    engagementMarkers: buildEngagementMarkerDescriptors(row, currentPoint, terrainPoint, transform).filter((marker) => marker.visible),
+    contacts: buildImpactContactDescriptors(row, currentPoint, terrainPoint),
+    trailLegend: options.trailLegend ?? options.trail ?? buildTrailColorLegendDescriptor(rows, options.trailMode ?? "plain"),
+    cameraMode,
+    cameraLabel: camera.label
+  };
 }
 
 export function buildReplayVisualFrame(rows: TelemetryRow[], options: ReplayVisualFrameOptions = {}): ReplayVisualFrameDescriptors {
@@ -1037,6 +1244,10 @@ function horizonStatusLabel(row: TelemetryRow | undefined): string {
     return "valid";
   }
   return `roll ${formatMetric(roll, "deg", 1)} / pitch ${formatMetric(pitch, "deg", 1)}`;
+}
+
+function trailColorValues(rows: TelemetryRow[], profile: TrailColorProfile): number[] {
+  return profile.channel ? rows.map((row) => telemetryNumber(row, profile.channel ?? "", 0)) : rows.map(() => 0);
 }
 
 function formatCompactNumber(value: number): string {

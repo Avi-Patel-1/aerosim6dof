@@ -1,7 +1,7 @@
 import type { ExamplesGalleryCard } from "./examplesGallery";
 import type { LiveProgressState } from "./liveProgress";
 import type { ReportStudioPacket, ReportStudioSectionId } from "./reportStudio";
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetrySeries } from "./types";
+import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, NavigationTelemetry, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetrySeries } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -48,6 +48,23 @@ export function getStorageStatus(): Promise<StorageStatus> {
   return request<StorageStatus>("/api/storage/status");
 }
 
+export function getStorageLayouts(): Promise<Record<string, unknown>[]> {
+  return request<Record<string, unknown>[]>("/api/storage/layouts");
+}
+
+export function saveStorageLayout(id: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return request<Record<string, unknown>>(`/api/storage/layouts/${encodeURIComponent(id)}`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteStorageLayout(id: string): Promise<{ id: string; deleted: boolean }> {
+  return request<{ id: string; deleted: boolean }>(`/api/storage/layouts/${encodeURIComponent(id)}`, {
+    method: "DELETE"
+  });
+}
+
 export function getExamplesGallery(): Promise<ExamplesGalleryCard[]> {
   return request<ExamplesGalleryCard[]>("/api/examples-gallery");
 }
@@ -66,6 +83,10 @@ export function getTelemetry(id: string, stride = 3): Promise<TelemetrySeries> {
 
 export function getRunAlarms(id: string): Promise<AlarmSummary[]> {
   return request<AlarmSummary[]>(`/api/runs/${encodeURIComponent(id)}/alarms`);
+}
+
+export function getRunNavigation(id: string, stride = 3): Promise<NavigationTelemetry> {
+  return request<NavigationTelemetry>(`/api/runs/${encodeURIComponent(id)}/navigation?stride=${stride}`);
 }
 
 export function getReportStudioPacket(id: string, sections?: ReportStudioSectionId[]): Promise<ReportStudioPacket> {
@@ -114,6 +135,20 @@ export function getJobs(): Promise<JobSummary[]> {
 
 export function getJob(id: string): Promise<JobSummary> {
   return request<JobSummary>(`/api/jobs/${encodeURIComponent(id)}`);
+}
+
+export function cancelJob(id: string, reason = "cancelled from browser"): Promise<{ cancel: Record<string, unknown>; job: JobSummary }> {
+  return request<{ cancel: Record<string, unknown>; job: JobSummary }>(`/api/jobs/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ reason })
+  });
+}
+
+export function retryJob(id: string): Promise<JobSummary> {
+  return request<JobSummary>(`/api/jobs/${encodeURIComponent(id)}/retry`, {
+    method: "POST",
+    body: JSON.stringify({})
+  });
 }
 
 export function getJobProgress(id: string): Promise<LiveProgressState> {

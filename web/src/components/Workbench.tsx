@@ -29,12 +29,14 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import {
+  cancelJob,
   createScenarioDraft,
   getCapabilities,
   getEnvironments,
   getExamplesGallery,
   getJob,
   getJobs,
+  getRunNavigation,
   getReportStudioPacket,
   getRun,
   getRunAlarms,
@@ -45,15 +47,17 @@ import {
   getTelemetry,
   getVehicles,
   jobEventsUrl,
+  retryJob,
   startJob,
   validateScenario,
   validateScenarioJson
 } from "../api";
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetryRow, TelemetrySeries } from "../types";
+import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, NavigationTelemetry, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetryRow, TelemetrySeries } from "../types";
 import type { ExamplesGalleryCard } from "../examplesGallery";
 import type { ReportStudioExportPayload, ReportStudioExportRequest, ReportStudioPacket } from "../reportStudio";
 import { activeAlarmCount } from "../alarms";
 import { channelLabel, channelLabelWithUnit } from "../telemetry";
+import { buildReplayOverlayState, buildTrailColorLegendDescriptor } from "../replayVisuals";
 import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
 import { CampaignDesigner } from "./CampaignDesigner";
 import { ExamplesGallery } from "./ExamplesGallery";
@@ -61,6 +65,7 @@ import { LiveProgressPanel } from "./LiveProgressPanel";
 import { OperationsTelemetryPanel } from "./OperationsTelemetryPanel";
 import { ParameterInfoPanel } from "./ParameterInfoPanel";
 import { ReplayScene } from "./ReplayScene";
+import { ReplaySceneOverlayLegend } from "./ReplaySceneOverlayLegend";
 import { ReportStudio } from "./ReportStudio";
 import { ScenarioBuilderV2 } from "./ScenarioBuilderV2";
 import { TelemetryChart } from "./TelemetryChart";
@@ -136,6 +141,24 @@ function preferredRun(items: RunSummary[], preferredId?: string): RunSummary | u
 
 function compareRun(items: RunSummary[], selectedId?: string): string {
   return items.find((run) => run.id !== selectedId)?.id ?? selectedId ?? "";
+}
+
+function telemetryWithNavigation(series: TelemetrySeries, navigation: NavigationTelemetry | null): TelemetrySeries {
+  if (!navigation?.rows.length) {
+    return series;
+  }
+  const history = series.history.map((row, index) => ({ ...row, ...(navigation.rows[index] ?? {}) }));
+  const metadata = { ...(series.metadata ?? {}), ...(navigation.metadata ?? {}) };
+  const navigationChannels = navigation.channels.map((channel) => channel.key).filter(Boolean);
+  return {
+    ...series,
+    history,
+    channels: {
+      ...series.channels,
+      history: [...new Set([...(series.channels.history ?? []), ...navigationChannels])]
+    },
+    metadata
+  };
 }
 
 type SelectProps = {
@@ -371,16 +394,22 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     setAlarms([]);
     setReportPacket(null);
     setAcknowledgedAlarms({});
-    Promise.all([getRun(selectedRunId), getTelemetry(selectedRunId, 3), getRunAlarms(selectedRunId).catch(() => [])])
-      .then(([detail, series, alarmItems]) => {
+    Promise.all([
+      getRun(selectedRunId),
+      getTelemetry(selectedRunId, 3),
+      getRunAlarms(selectedRunId).catch(() => []),
+      getRunNavigation(selectedRunId, 3).catch(() => null)
+    ])
+      .then(([detail, series, alarmItems, navigation]) => {
         if (!mounted) {
           return;
         }
+        const augmentedSeries = telemetryWithNavigation(series, navigation);
         setRunDetail(detail);
-        setTelemetry(series);
+        setTelemetry(augmentedSeries);
         setAlarms(alarmItems);
         if (canReuseHandoff) {
-          setCurrentIndex((index) => Math.min(index, Math.max(series.history.length - 1, 0)));
+          setCurrentIndex((index) => Math.min(index, Math.max(augmentedSeries.history.length - 1, 0)));
         } else {
           setCurrentIndex(0);
         }
@@ -425,10 +454,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       return;
     }
     let mounted = true;
-    getTelemetry(compareRunId, 3)
-      .then((series) => {
+    Promise.all([getTelemetry(compareRunId, 3), getRunNavigation(compareRunId, 3).catch(() => null)])
+      .then(([series, navigation]) => {
         if (mounted) {
-          setCompareTelemetry(series);
+          setCompareTelemetry(telemetryWithNavigation(series, navigation));
         }
       })
       .catch(() => {
@@ -463,7 +492,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       if (job.status === "completed") {
         return job;
       }
-      if (job.status === "failed") {
+      if (job.status === "failed" || job.status === "cancelled") {
         throw new Error(job.message || "Job failed");
       }
       await sleep(350);
@@ -502,7 +531,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         if (job.status === "completed") {
           finish(() => resolve(job));
         }
-        if (job.status === "failed") {
+        if (job.status === "failed" || job.status === "cancelled") {
           finish(() => reject(new Error(job.message || "Job failed")));
         }
       };
@@ -540,6 +569,27 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       setMessage(error instanceof Error ? error.message : "Action failed");
     } finally {
       setBusyAction("");
+    }
+  };
+
+  const cancelActiveJob = async (jobId: string) => {
+    try {
+      const response = await cancelJob(jobId);
+      rememberJob(response.job);
+      setMessage("Cancellation requested");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Cancel failed");
+    }
+  };
+
+  const retryExistingJob = async (_action: string, jobId: string) => {
+    try {
+      const job = await retryJob(jobId);
+      rememberJob(job);
+      await waitForJob(job.id);
+      await refreshRuns();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Retry failed");
     }
   };
 
@@ -797,6 +847,20 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const latestResult = results[0];
   const activeTabInfo = TABS.find((tab) => tab.id === activeTab) ?? TABS[0];
   const compareRunLabel = runs.find((run) => run.id === compareRunId)?.scenario ?? compareRunId;
+  const replayRows = telemetry?.history ?? [];
+  const replayOverlayState = useMemo(
+    () =>
+      buildReplayOverlayState(replayRows, currentIndex, {
+        trailMode: trailColorMode,
+        trailLegend: buildTrailColorLegendDescriptor(replayRows, trailColorMode),
+        cameraMode,
+        showVelocity,
+        showAcceleration,
+        showWind,
+        showSensors
+      }),
+    [cameraMode, currentIndex, replayRows, showAcceleration, showSensors, showVelocity, showWind, trailColorMode]
+  );
   const faultList = faults
     .split(",")
     .map((item) => item.trim())
@@ -910,7 +974,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 </div>
               </div>
               <ReplayScene
-                rows={telemetry?.history ?? []}
+                rows={replayRows}
                 currentIndex={currentIndex}
                 environmentMode={environmentMode}
                 cameraMode={cameraMode}
@@ -922,6 +986,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 showSensors={showSensors}
                 trailColorMode={trailColorMode}
               />
+              <ReplaySceneOverlayLegend overlayState={replayOverlayState} compact={replayFullscreen} />
               <div className="scrubber">
                 <button
                   className="timeline-toggle"
@@ -1388,7 +1453,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 ))}
               </div>
             </section>
-            <LiveProgressPanel jobs={jobHistory} />
+            <LiveProgressPanel jobs={jobHistory} onCancel={cancelActiveJob} onRetry={retryExistingJob} />
           </div>
         )}
       </section>

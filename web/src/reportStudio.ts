@@ -25,6 +25,7 @@ export type ReportStudioSummarySection = {
   available: boolean;
   source: string | null;
   data: Record<string, unknown>;
+  scenario_summary?: Record<string, unknown>;
   highlights: ReportStudioMetric[];
 };
 
@@ -71,9 +72,20 @@ export type ReportStudioTelemetryHighlight = {
   final: ReportStudioTelemetrySample;
 };
 
+export type ReportStudioTelemetryChannelRef = {
+  id: string;
+  source: string;
+  channel: string;
+  label: string;
+  unit: string;
+  sample_count: number;
+};
+
 export type ReportStudioTelemetrySection = {
   available: boolean;
   sources: Array<{ source: string; path: string; sample_count: number }>;
+  selected_channels?: string[];
+  available_channels?: ReportStudioTelemetryChannelRef[];
   items: ReportStudioTelemetryHighlight[];
 };
 
@@ -140,7 +152,20 @@ export type ReportStudioExportRequest = {
   packet_id: string | null;
   format: ReportStudioExportFormat;
   sections: ReportStudioSectionId[];
+  telemetry_channels: string[];
   options: ReportStudioExportOptions;
+};
+
+export type ReportStudioReadySummary = {
+  title: string;
+  subtitle: string;
+  section_count: number;
+  available_section_count: number;
+  telemetry_channel_count: number;
+  artifact_count: number;
+  event_count: number;
+  alarm_count: number;
+  ready: boolean;
 };
 
 export type ReportStudioExportPayload = {
@@ -150,6 +175,8 @@ export type ReportStudioExportPayload = {
   run_dir: string;
   generated_at_utc: string;
   export_format: ReportStudioExportFormat;
+  report_summary: ReportStudioReadySummary;
+  telemetry_channels: string[];
   sections: Record<string, unknown>;
   section_descriptions: ReportStudioSectionDescription[];
 };
@@ -234,6 +261,59 @@ export function defaultReportStudioSections(packet?: ReportStudioPacket | null):
   return normalizeReportStudioSections(packet?.selected_sections, DEFAULT_REPORT_STUDIO_SECTIONS);
 }
 
+export function availableReportStudioTelemetryChannels(packet?: ReportStudioPacket | null): ReportStudioTelemetryChannelRef[] {
+  const telemetry = packet?.telemetry_highlights;
+  if (!telemetry) {
+    return [];
+  }
+  if (Array.isArray(telemetry.available_channels) && telemetry.available_channels.length) {
+    return telemetry.available_channels;
+  }
+  return telemetry.items.map((item) => ({
+    id: item.id,
+    source: item.source,
+    channel: item.channel,
+    label: item.label,
+    unit: item.unit,
+    sample_count: item.sample_count
+  }));
+}
+
+export function defaultReportStudioTelemetryChannels(packet?: ReportStudioPacket | null): string[] {
+  const selected = packet?.telemetry_highlights?.selected_channels;
+  if (Array.isArray(selected) && selected.length) {
+    return normalizeReportStudioTelemetryChannels(selected, packet);
+  }
+  return availableReportStudioTelemetryChannels(packet)
+    .filter((channel) => packet?.telemetry_highlights?.items.some((item) => item.id === channel.id))
+    .map((channel) => channel.id);
+}
+
+export function normalizeReportStudioTelemetryChannels(
+  channels?: readonly unknown[] | null,
+  packet?: ReportStudioPacket | null
+): string[] {
+  const available = availableReportStudioTelemetryChannels(packet);
+  const allowed = new Set(available.map((channel) => channel.id));
+  const normalized: string[] = [];
+  (channels ?? []).forEach((channel) => {
+    if (typeof channel !== "string") {
+      return;
+    }
+    const value = channel.trim();
+    if (!value || value.includes("/") || value.includes("\\") || value.includes("..")) {
+      return;
+    }
+    if ((allowed.size === 0 || allowed.has(value)) && !normalized.includes(value)) {
+      normalized.push(value);
+    }
+  });
+  if (normalized.length) {
+    return normalized;
+  }
+  return available.filter((channel) => packet?.telemetry_highlights?.items.some((item) => item.id === channel.id)).map((channel) => channel.id);
+}
+
 export function packetPayloadForSection(packet: ReportStudioPacket | null | undefined, section: ReportStudioSectionId): unknown {
   if (!packet) {
     return undefined;
@@ -273,9 +353,11 @@ export function buildReportStudioExportRequest(input: {
   runDir?: string | null;
   packet?: ReportStudioPacket | null;
   sections?: readonly unknown[] | null;
+  telemetryChannels?: readonly unknown[] | null;
   format?: unknown;
   options?: Partial<ReportStudioExportOptions>;
 }): ReportStudioExportRequest {
+  const sections = normalizeReportStudioSections(input.sections ?? input.packet?.selected_sections);
   return {
     kind: "report_studio_packet_export",
     schema: REPORT_STUDIO_REQUEST_SCHEMA,
@@ -283,7 +365,10 @@ export function buildReportStudioExportRequest(input: {
     run_dir: input.runDir ?? input.packet?.run_dir ?? null,
     packet_id: input.packet?.packet_id ?? null,
     format: isReportStudioExportFormat(input.format) ? input.format : "json",
-    sections: normalizeReportStudioSections(input.sections ?? input.packet?.selected_sections),
+    sections,
+    telemetry_channels: sections.includes("telemetry")
+      ? normalizeReportStudioTelemetryChannels(input.telemetryChannels ?? input.packet?.telemetry_highlights?.selected_channels, input.packet)
+      : [],
     options: { ...DEFAULT_EXPORT_OPTIONS, ...(input.options ?? {}) }
   };
 }
@@ -294,12 +379,17 @@ export function buildReportStudioExportPayload(
 ): ReportStudioExportPayload {
   const format = isReportStudioExportFormat(request.format) ? request.format : "json";
   const selected = normalizeReportStudioSections(request.sections ?? packet.selected_sections);
+  const selectedTelemetryChannels = selected.includes("telemetry")
+    ? normalizeReportStudioTelemetryChannels(request.telemetry_channels, packet)
+    : [];
   const sections = selected.reduce<Record<string, unknown>>((payload, section) => {
     if (section === "artifacts" && request.options?.include_artifact_refs === false) {
       return payload;
     }
     const definition = SECTION_BY_ID[section];
-    payload[definition.payloadKey] = packet[definition.payloadKey];
+    const sectionPayload = packet[definition.payloadKey];
+    payload[definition.payloadKey] =
+      section === "telemetry" ? filterTelemetrySection(sectionPayload, selectedTelemetryChannels) : sectionPayload;
     return payload;
   }, {});
 
@@ -310,8 +400,49 @@ export function buildReportStudioExportPayload(
     run_dir: packet.run_dir,
     generated_at_utc: packet.generated_at_utc,
     export_format: format,
+    report_summary: buildReportStudioReportSummary(packet, selected, selectedTelemetryChannels),
+    telemetry_channels: selectedTelemetryChannels,
     sections,
     section_descriptions: describeSelectedPacketSections(packet, selected)
+  };
+}
+
+export function buildReportStudioReportSummary(
+  packet: ReportStudioPacket | null | undefined,
+  selectedSections?: readonly unknown[] | null,
+  selectedTelemetryChannels?: readonly unknown[] | null
+): ReportStudioReadySummary {
+  const sections = normalizeReportStudioSections(selectedSections ?? packet?.selected_sections);
+  const descriptions = describeReportStudioSections(packet, sections).filter((section) => section.included);
+  const scenarioSummary = packet?.summary?.scenario_summary;
+  const scenarioName = isRecord(scenarioSummary) && typeof scenarioSummary.name === "string" ? scenarioSummary.name : null;
+  const summaryScenario = typeof packet?.summary?.data.scenario === "string" ? packet.summary.data.scenario : null;
+  const title = scenarioName || summaryScenario || packet?.packet_id || "No packet loaded";
+  const duration = formatNumber(asNumber(packet?.summary?.data.duration_s), "s");
+  const subtitle = packet ? `${packet.packet_id}${duration === "-" ? "" : `, ${duration}`}` : "Load a run packet to build an export";
+  const telemetryChannels = normalizeReportStudioTelemetryChannels(selectedTelemetryChannels ?? packet?.telemetry_highlights?.selected_channels, packet);
+  return {
+    title,
+    subtitle,
+    section_count: descriptions.length,
+    available_section_count: descriptions.filter((section) => section.available).length,
+    telemetry_channel_count: sections.includes("telemetry") ? telemetryChannels.length : 0,
+    artifact_count: Array.isArray(packet?.artifacts) ? packet.artifacts.length : 0,
+    event_count: asNumber(packet?.events_timeline?.count) ?? 0,
+    alarm_count: asNumber(packet?.alarm_summaries?.count) ?? 0,
+    ready: Boolean(packet && descriptions.length > 0)
+  };
+}
+
+function filterTelemetrySection(payload: unknown, selectedTelemetryChannels: string[]): unknown {
+  if (!isRecord(payload) || !Array.isArray(payload.items)) {
+    return payload;
+  }
+  const selected = new Set(selectedTelemetryChannels);
+  return {
+    ...payload,
+    selected_channels: selectedTelemetryChannels,
+    items: payload.items.filter((item) => isRecord(item) && typeof item.id === "string" && selected.has(item.id))
   };
 }
 

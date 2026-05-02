@@ -9,7 +9,7 @@ import numpy as np
 from aerosim6dof.constants import G0
 from aerosim6dof.core.quaternions import derivative as quaternion_derivative
 from aerosim6dof.core.quaternions import to_dcm
-from aerosim6dof.environment.atmosphere import AtmosphereState, isa_atmosphere
+from aerosim6dof.environment.atmosphere import AtmosphereModel, AtmosphereState
 from aerosim6dof.environment.gravity import gravity_vector
 from aerosim6dof.vehicle.aerodynamics import AeroSample, AerodynamicModel
 from aerosim6dof.vehicle.geometry import ReferenceGeometry
@@ -42,11 +42,13 @@ class DynamicsModel:
         propulsion: PropulsionModel,
         mass_properties: MassProperties,
         geometry: ReferenceGeometry,
+        atmosphere_config: dict | None = None,
     ):
         self.aero = aero
         self.propulsion = propulsion
         self.mass_properties = mass_properties
         self.geometry = geometry
+        self.atmosphere = AtmosphereModel(atmosphere_config)
 
     def evaluate(
         self,
@@ -57,7 +59,7 @@ class DynamicsModel:
         dt: float | None = None,
     ) -> DynamicsEvaluation:
         rot = to_dcm(state.quaternion)
-        env = isa_atmosphere(float(state.position_m[2]))
+        env = self.atmosphere.sample(float(state.position_m[2]))
         v_air_body = rot.T @ (state.velocity_mps - wind_mps)
         aero = self.aero.compute(
             env.density,

@@ -58,6 +58,16 @@ export type ScenarioValidation = {
   summary?: Record<string, unknown>;
   warnings?: Array<string | ScenarioBuilderWarning>;
   advisories?: ScenarioAdvisory[];
+  advisory_summary?: {
+    counts_by_severity?: Record<string, number>;
+    blocking_count?: number;
+    error_count?: number;
+    warning_count?: number;
+    info_count?: number;
+    highest_severity?: string;
+    suggested_next_actions?: string[];
+    [key: string]: unknown;
+  };
   explanation?: string;
   recommendations?: string[];
   [key: string]: unknown;
@@ -108,7 +118,7 @@ export type JobEvent = {
 export type JobSummary = {
   id: string;
   action: string;
-  status: "queued" | "running" | "completed" | "failed";
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
   message: string;
   progress: number;
   created_at_utc: string;
@@ -187,6 +197,20 @@ export type TelemetrySeries = {
   sensors: TelemetryRow[];
   targets: TelemetryRow[];
   interceptors: TelemetryRow[];
+  metadata?: Record<string, TelemetryChannelMetadata>;
+};
+
+export type NavigationTelemetryChannel = {
+  key: string;
+  label: string;
+  unit: string;
+};
+
+export type NavigationTelemetry = {
+  run_id: string;
+  rows: TelemetryRow[];
+  channels: NavigationTelemetryChannel[];
+  summary: Record<string, unknown>;
   metadata?: Record<string, TelemetryChannelMetadata>;
 };
 

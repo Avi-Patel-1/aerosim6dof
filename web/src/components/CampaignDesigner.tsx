@@ -1,17 +1,16 @@
-import { AlertTriangle, Boxes, CheckCircle2, FileJson, Play, Settings2, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertTriangle, Boxes, CheckCircle2, Clipboard, FileJson, Play, RotateCcw, Settings2, ShieldAlert, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   CAMPAIGN_KIND_LABELS,
-  buildCampaignActionPayload,
+  buildCampaignPlanModel,
   createDefaultCampaignDraft,
   faultsFromCapabilities,
   parseCsvList,
-  summarizeCampaignPlan,
-  validateCampaignDraft,
   type CampaignActionPayload,
   type CampaignDesignerDraft,
   type CampaignPlanKind,
-  type CampaignValidation
+  type CampaignValidation,
+  type CampaignValidationIssue
 } from "../campaignDesigner";
 import type { Capability, ScenarioSummary } from "../types";
 
@@ -63,6 +62,17 @@ function scenarioOptionLabel(scenario: ScenarioSummary): string {
   return `${scenario.name} (${scenario.id})`;
 }
 
+function FieldIssues({ issues }: { issues?: CampaignValidationIssue[] }) {
+  if (!issues?.length) {
+    return null;
+  }
+  return (
+    <span className="scenario-builder-v2-hint">
+      {issues.map((issue) => issue.message).join(" ")}
+    </span>
+  );
+}
+
 export function CampaignDesigner({
   scenarios,
   capabilities = [],
@@ -76,6 +86,7 @@ export function CampaignDesigner({
     ...createDefaultCampaignDraft(initialDraft?.scenarioId ?? firstScenarioId(scenarios), faultOptions),
     ...initialDraft
   }));
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
 
   useEffect(() => {
     setDraft((current) => {
@@ -90,14 +101,24 @@ export function CampaignDesigner({
     });
   }, [scenarios]);
 
-  const validation = useMemo(() => validateCampaignDraft(draft, { scenarios, faultOptions }), [draft, faultOptions, scenarios]);
-  const payload = useMemo(() => buildCampaignActionPayload(draft), [draft]);
-  const summary = useMemo(() => summarizeCampaignPlan(draft, scenarios, faultOptions), [draft, faultOptions, scenarios]);
+  useEffect(() => {
+    if (!initialDraft?.scenarioId) {
+      return;
+    }
+    setDraft((current) => (current.scenarioId === initialDraft.scenarioId ? current : { ...current, scenarioId: initialDraft.scenarioId ?? current.scenarioId }));
+  }, [initialDraft?.scenarioId]);
+
+  const plan = useMemo(() => buildCampaignPlanModel(draft, { scenarios, faultOptions }), [draft, faultOptions, scenarios]);
+  const { payload, summary, validation } = plan;
   const payloadJson = useMemo(() => JSON.stringify(payload, null, 2), [payload]);
   const selectedFaults = useMemo(() => new Set(parseCsvList(draft.faultText)), [draft.faultText]);
   const allFaultsSelected = draft.kind === "fault_campaign" && !draft.faultText.trim();
   const isBusy = Boolean(busyAction && busyAction === payload.action);
   const issues = [...validation.errors, ...validation.warnings];
+
+  useEffect(() => {
+    setCopyState("idle");
+  }, [payloadJson]);
 
   useEffect(() => {
     onDraftChange?.(draft, payload, validation);
@@ -115,6 +136,19 @@ export function CampaignDesigner({
       next.delete(fault);
     }
     updateDraft("faultText", Array.from(next).sort().join(","));
+  };
+
+  const resetDraft = () => {
+    setDraft(createDefaultCampaignDraft(draft.scenarioId || firstScenarioId(scenarios), faultOptions));
+  };
+
+  const copyPayload = async () => {
+    try {
+      await navigator.clipboard.writeText(payloadJson);
+      setCopyState("copied");
+    } catch {
+      setCopyState("failed");
+    }
   };
 
   const runPlan = async () => {
@@ -164,6 +198,7 @@ export function CampaignDesigner({
                     </option>
                   ))}
                 </select>
+                <FieldIssues issues={plan.issueMap.scenarioId} />
               </Field>
             </div>
           )}
@@ -172,9 +207,11 @@ export function CampaignDesigner({
             <div className="guided-grid scenario-builder-v2-grid">
               <Field label="Samples">
                 <input type="number" min={1} max={50} step={1} value={numberInputValue(draft.samples)} onChange={(event) => updateDraft("samples", readNumber(event.target.value))} />
+                <FieldIssues issues={plan.issueMap.samples} />
               </Field>
               <Field label="Seed">
                 <input type="number" step={1} value={numberInputValue(draft.seed)} onChange={(event) => updateDraft("seed", readNumber(event.target.value))} />
+                <FieldIssues issues={plan.issueMap.seed} />
               </Field>
               <Field label="Mass sigma kg">
                 <input
@@ -184,6 +221,7 @@ export function CampaignDesigner({
                   value={numberInputValue(draft.massSigmaKg)}
                   onChange={(event) => updateDraft("massSigmaKg", readNumber(event.target.value))}
                 />
+                <FieldIssues issues={plan.issueMap.massSigmaKg} />
               </Field>
               <Field label="Wind sigma m/s">
                 <input
@@ -193,6 +231,7 @@ export function CampaignDesigner({
                   value={numberInputValue(draft.windSigmaMps)}
                   onChange={(event) => updateDraft("windSigmaMps", readNumber(event.target.value))}
                 />
+                <FieldIssues issues={plan.issueMap.windSigmaMps ?? plan.issueMap.dispersions} />
               </Field>
             </div>
           )}
@@ -201,9 +240,11 @@ export function CampaignDesigner({
             <div className="guided-grid scenario-builder-v2-grid">
               <Field label="Parameter path">
                 <input value={draft.sweepParameter} onChange={(event) => updateDraft("sweepParameter", event.target.value)} />
+                <FieldIssues issues={plan.issueMap.sweepParameter} />
               </Field>
               <Field label="Values">
                 <input value={draft.sweepValues} onChange={(event) => updateDraft("sweepValues", event.target.value)} />
+                <FieldIssues issues={plan.issueMap.sweepValues} />
               </Field>
               <Field label="Max runs">
                 <input
@@ -214,6 +255,7 @@ export function CampaignDesigner({
                   value={numberInputValue(draft.sweepMaxRuns)}
                   onChange={(event) => updateDraft("sweepMaxRuns", readNumber(event.target.value))}
                 />
+                <FieldIssues issues={plan.issueMap.sweepMaxRuns} />
               </Field>
             </div>
           )}
@@ -239,6 +281,7 @@ export function CampaignDesigner({
               <section className="builder-card scenario-builder-v2-card">
                 <Field label="Faults">
                   <input value={draft.faultText} onChange={(event) => updateDraft("faultText", event.target.value)} />
+                  <FieldIssues issues={plan.issueMap.faultText} />
                 </Field>
                 <Field label="Max runs">
                   <input
@@ -249,6 +292,7 @@ export function CampaignDesigner({
                     value={numberInputValue(draft.faultMaxRuns)}
                     onChange={(event) => updateDraft("faultMaxRuns", readNumber(event.target.value))}
                   />
+                  <FieldIssues issues={plan.issueMap.faultMaxRuns} />
                 </Field>
               </section>
             </div>
@@ -260,6 +304,7 @@ export function CampaignDesigner({
                 <strong>Scenario Batch</strong>
                 <span>{scenarios.length ? `${scenarios.length} loaded scenarios` : "scenario index pending"}</span>
               </div>
+              <FieldIssues issues={plan.issueMap.batch} />
             </div>
           )}
 
@@ -268,7 +313,11 @@ export function CampaignDesigner({
               <Play size={17} />
               {isBusy ? "Running" : "Run"}
             </button>
-            <span>{validation.estimatedRuns} planned run{validation.estimatedRuns === 1 ? "" : "s"}</span>
+            <button className="secondary-action" type="button" onClick={resetDraft}>
+              <RotateCcw size={16} />
+              Reset
+            </button>
+            <span>{plan.runCountLabel}</span>
           </div>
         </section>
 
@@ -280,6 +329,7 @@ export function CampaignDesigner({
             <h3>Plan Summary</h3>
           </div>
           <p>{summary.description}</p>
+          <p className="scenario-builder-v2-hint">Launch target: {plan.launchRouteHint}</p>
           <div className="metric-grid">
             {summary.rows.map((row) => (
               <div key={row.label}>
@@ -307,6 +357,13 @@ export function CampaignDesigner({
             <Field label="API payload">
               <textarea readOnly value={payloadJson} />
             </Field>
+            <div className="editor-actions">
+              <button className="secondary-action" type="button" onClick={copyPayload}>
+                <Clipboard size={16} />
+                Copy payload
+              </button>
+              {copyState !== "idle" && <span className="scenario-builder-v2-hint">{copyState === "copied" ? "Payload copied." : "Clipboard unavailable."}</span>}
+            </div>
           </div>
         </aside>
       </div>

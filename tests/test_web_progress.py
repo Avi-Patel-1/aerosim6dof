@@ -1,16 +1,23 @@
 import json
+import subprocess
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 
 from aerosim6dof.web.progress import (
+    JobCancellationRegistry,
     ProgressEvent,
+    cancellation_payload,
     cancel_descriptor,
+    clear_cancel,
     is_terminal_phase,
+    make_cancellation_payload,
     make_progress_event,
     merge_progress_event,
     normalize_percent,
     normalize_phase,
     progress_from_job_summary,
+    request_cancel,
     retry_descriptor,
 )
 
@@ -95,6 +102,75 @@ class WebProgressTests(unittest.TestCase):
         retry = retry_descriptor(failed)
         self.assertTrue(retry["enabled"])
         self.assertEqual(retry["path"], "/api/jobs/monte_carlo")
+
+    def test_cancellation_registry_tracks_and_clears_job_requests(self):
+        registry = JobCancellationRegistry()
+
+        self.assertFalse(registry.is_cancel_requested("job-4"))
+        requested = registry.request_cancel("job-4", reason="operator", requested_by="web")
+        self.assertTrue(requested.requested)
+        self.assertEqual(requested.job_id, "job-4")
+        self.assertEqual(requested.reason, "operator")
+        self.assertEqual(requested.requested_by, "web")
+        self.assertTrue(requested.requested_at.endswith("Z"))
+        self.assertTrue(registry.is_cancel_requested("job-4"))
+        self.assertEqual(registry.cancellation_payload("job-4")["requested"], True)
+
+        cleared = registry.clear_cancel("job-4")
+        self.assertFalse(cleared.requested)
+        self.assertFalse(registry.is_cancel_requested("job-4"))
+
+        with self.assertRaises(ValueError):
+            registry.request_cancel("")
+
+    def test_module_level_cancellation_helpers_share_default_registry(self):
+        try:
+            requested = request_cancel("job-5", message="stop")
+            self.assertTrue(requested.requested)
+            self.assertTrue(cancellation_payload("job-5")["requested"])
+            payload = make_cancellation_payload("job-5", requested=True, requested_at=datetime(2026, 5, 2, tzinfo=timezone.utc))
+            self.assertEqual(payload.requested_at, "2026-05-02T00:00:00Z")
+        finally:
+            clear_cancel("job-5")
+        self.assertFalse(cancellation_payload("job-5")["requested"])
+
+    def test_frontend_live_progress_helpers_typecheck(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        web_dir = repo_root / "web"
+        tsc = web_dir / "node_modules" / ".bin" / "tsc"
+        if not tsc.exists():
+            self.skipTest("web/node_modules is not installed")
+
+        result = subprocess.run(
+            [
+                str(tsc),
+                "--noEmit",
+                "--pretty",
+                "false",
+                "--jsx",
+                "react-jsx",
+                "--moduleResolution",
+                "Node",
+                "--module",
+                "ESNext",
+                "--target",
+                "ES2021",
+                "--lib",
+                "DOM,DOM.Iterable,ES2021",
+                "--strict",
+                "--skipLibCheck",
+                "--esModuleInterop",
+                "--allowSyntheticDefaultImports",
+                "--isolatedModules",
+                "src/liveProgress.ts",
+                "src/components/LiveProgressPanel.tsx",
+            ],
+            cwd=web_dir,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_existing_job_summary_adapts_to_progress_event(self):
         event = progress_from_job_summary(

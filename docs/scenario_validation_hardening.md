@@ -20,15 +20,27 @@ Each advisory is a `ScenarioAdvisory` dataclass with these fields:
 Use `advisory.to_dict()` when an API response needs plain JSON-compatible
 objects.
 
+`summarize_scenario_advisories(advisories)` returns UI-ready aggregate data:
+
+- `counts_by_severity`: count map keyed by severity.
+- `blocking_count` and `error_count`: number of error advisories.
+- `warning_count` and `info_count`: warning and info counts.
+- `highest_severity`: `error`, `warning`, `info`, or `none`.
+- `suggested_next_actions`: de-duplicated suggestions ordered by severity.
+
 ## Integration path
 
 Workbench/API integration can run advisories before or after hard validation:
 
 ```python
-from aerosim6dof.analysis.scenario_validation import validate_scenario_advisories
+from aerosim6dof.analysis.scenario_validation import (
+    summarize_scenario_advisories,
+    validate_scenario_advisories,
+)
 
 advisories = validate_scenario_advisories(raw_scenario, base_dir=scenario_file.parent)
 payload = [item.to_dict() for item in advisories]
+summary = summarize_scenario_advisories(advisories)
 ```
 
 If `base_dir` is provided, scenario references are checked relative to the
@@ -62,7 +74,7 @@ Schema and model visibility:
   `VEHICLE_MASS_INCONSISTENT`, `SENSOR_FAULTS_NOT_LIST`: likely hard-validation
   or review issues.
 
-Why-this-may-fail warnings:
+Why-this-may-fail and review hints:
 
 - `TIMESTEP_INVALID`, `TIMESTEP_COARSE`, `DURATION_INVALID`,
   `STEP_COUNT_EXTREME`, `STEP_COUNT_LOW`: integration setup risks.
@@ -71,7 +83,8 @@ Why-this-may-fail warnings:
   `INITIAL_SPEED_EXTREME`, `INITIAL_ATTITUDE_STEEP`: initial-condition risks.
 - `MISSING_TERMINATION_SECTION`, `TERMINATION_LIMIT_INVALID`,
   `QBAR_LIMIT_MISSING`, `LOAD_LIMIT_MISSING`, `MISSING_OUTPUT_SECTION`: missing
-  run-stop or output-review visibility.
+  run-stop or output-review visibility. `MISSING_TERMINATION_SECTION` is info
+  because packaged examples may intentionally rely on runtime defaults.
 
 Terrain, radar, and engagement compatibility:
 
@@ -86,6 +99,21 @@ Terrain, radar, and engagement compatibility:
 - `PRESET_ALTITUDE_COMPATIBILITY`, `PRESET_SPEED_COMPATIBILITY`,
   `PRESET_TERRAIN_LOW_ALTITUDE`, `PRESET_ENVIRONMENT_OVERRIDE`: preset-name
   compatibility hints for common scenario authoring mistakes.
+
+Missile, interceptor, and realism compatibility:
+
+- `MISSILE_CONFIG_NOT_OBJECT`, `MISSILE_MODEL_UNSUPPORTED`,
+  `MISSILE_CONFIG_MISSING_FOR_INTERCEPTOR`,
+  `MISSILE_INTERCEPTOR_MODEL_MISMATCH`, `MISSILE_CONFIG_STANDALONE`: top-level
+  missile block and interceptor dynamics compatibility.
+- `INTERCEPTOR_CONFIG_NOT_OBJECT`, `INTERCEPTOR_MODEL_UNSUPPORTED`,
+  `INTERCEPTOR_DYNAMICS_UNSUPPORTED`, `INTERCEPTOR_CONFIG_STANDALONE`: top-level
+  or per-object interceptor model compatibility.
+- `REALISM_CONFIG_NOT_OBJECT`, `REALISM_TOGGLE_UNSUPPORTED`,
+  `REALISM_TOGGLE_INVALID`, `REALISM_TOGGLE_PRESENT`: optional realism-helper
+  toggle review. Enabled known toggles are reported as info because the helper
+  modules may still need explicit runtime integration before they affect
+  simulation physics.
 
 These codes are intentionally advisory. Existing scenarios do not need to be
 perfect to run, and downstream callers should not fail a simulation solely

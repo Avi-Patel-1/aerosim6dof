@@ -175,7 +175,8 @@ export function OperationsTelemetryChart({
   const maxTime = times.length ? Math.max(...times) : 1;
   const spanTime = maxTime - minTime || 1;
   const indexedTime = asNumber(rows[currentIndex]?.time_s);
-  const activeTime = Math.min(Math.max(cursorTime ?? indexedTime ?? minTime, minTime), maxTime);
+  const requestedTime = typeof cursorTime === "number" && Number.isFinite(cursorTime) ? cursorTime : null;
+  const activeTime = Math.min(Math.max(requestedTime ?? indexedTime ?? minTime, minTime), maxTime);
   const cursorX = padding.left + ((activeTime - minTime) / spanTime) * usableWidth;
   const activeRow = nearestRow(rows, activeTime) ?? rows[currentIndex];
   const activeCompareRow = compareRows.length ? nearestRow(compareRows, activeTime) : undefined;

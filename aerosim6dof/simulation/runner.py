@@ -261,7 +261,7 @@ def _build_components(scenario: Scenario) -> dict[str, Any]:
         "mass_properties": mass,
         "propulsion": propulsion,
         "aero": aero,
-        "dynamics": DynamicsModel(aero, propulsion, mass, geometry),
+        "dynamics": DynamicsModel(aero, propulsion, mass, geometry, scenario.environment.get("atmosphere", scenario.raw.get("atmosphere", {}))),
         "wind": WindModel(scenario.wind, seed=int(scenario.sensors.get("seed", 7)) + 101),
         "terrain": TerrainModel(scenario.environment.get("terrain", {})),
         "contact": GroundContactModel(ground_contact_config(scenario)),

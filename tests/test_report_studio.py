@@ -1,10 +1,11 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from aerosim6dof.reports.csv_writer import write_csv
 from aerosim6dof.reports.json_writer import write_json
-from aerosim6dof.reports.studio import REPORT_STUDIO_SCHEMA, assemble_report_studio_packet
+from aerosim6dof.reports.studio import REPORT_STUDIO_SCHEMA, assemble_report_studio_packet, write_report_studio_packet
 
 
 class ReportStudioPacketTests(unittest.TestCase):
@@ -13,10 +14,16 @@ class ReportStudioPacketTests(unittest.TestCase):
             run_dir = self._write_sample_run(Path(tmp) / "mission_alpha")
 
             packet = assemble_report_studio_packet(run_dir, artifact_base_url="/api/artifacts/mission_alpha")
+            repeat_packet = assemble_report_studio_packet(run_dir, artifact_base_url="/api/artifacts/mission_alpha")
 
             self.assertEqual(packet["schema"], REPORT_STUDIO_SCHEMA)
             self.assertEqual(packet["packet_id"], "mission_alpha")
+            self.assertEqual(packet, repeat_packet)
+            self.assertEqual(packet["generated_at_utc"], "2026-04-26T12:30:00Z")
             self.assertEqual(packet["summary"]["data"]["scenario"], "Mission Alpha")
+            self.assertEqual(packet["summary"]["scenario_summary"]["name"], "Mission Alpha")
+            self.assertEqual(packet["summary"]["scenario_summary"]["environment_name"], "test_range")
+            self.assertEqual(packet["summary"]["scenario_summary"]["guidance_mode"], "target_intercept")
 
             highlight_keys = {item["key"] for item in packet["summary"]["highlights"]}
             self.assertIn("max_altitude_m", highlight_keys)
@@ -33,12 +40,17 @@ class ReportStudioPacketTests(unittest.TestCase):
             self.assertGreaterEqual(alarms["counts_by_severity"]["warning"], 1)
 
             telemetry = {item["id"]: item for item in packet["telemetry_highlights"]["items"]}
+            channel_ids = {item["id"] for item in packet["telemetry_highlights"]["available_channels"]}
+            self.assertIn("history.altitude_m", channel_ids)
+            self.assertIn("controls.throttle", channel_ids)
+            self.assertIn("history.altitude_m", packet["telemetry_highlights"]["selected_channels"])
             self.assertEqual(telemetry["history.altitude_m"]["max"]["value"], 120.0)
             self.assertEqual(telemetry["history.qbar_pa"]["max"]["time_s"], 1.0)
             self.assertEqual(telemetry["controls.throttle"]["final"]["value"], 0.5)
             self.assertEqual(telemetry["sensors.gps_valid"]["min"]["value"], 0.0)
 
             engagement = packet["engagement_metrics"]
+            self.assertEqual(engagement["source"], "engagement_report.json")
             self.assertEqual(engagement["target_ids"], ["target-a"])
             self.assertEqual(engagement["interceptor_ids"], ["int-1"])
             self.assertEqual(engagement["min_target_range_m"]["value"], 8.0)
@@ -64,6 +76,37 @@ class ReportStudioPacketTests(unittest.TestCase):
             self.assertNotIn("alarm_summaries", packet)
             self.assertEqual(len(packet["artifacts"]), 1)
 
+    def test_packet_uses_selected_telemetry_channels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run_dir = self._write_sample_run(Path(tmp) / "selected_channels")
+
+            packet = assemble_report_studio_packet(
+                run_dir,
+                sections=("telemetry",),
+                telemetry_channels=("history.speed_mps", "throttle", "../bad", "missing"),
+            )
+
+            telemetry = packet["telemetry_highlights"]
+            self.assertEqual(telemetry["selected_channels"], ["history.speed_mps", "controls.throttle"])
+            self.assertEqual([item["id"] for item in telemetry["items"]], ["history.speed_mps", "controls.throttle"])
+
+    def test_write_packet_only_writes_under_allowed_report_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run_dir = self._write_minimal_run(root / "write_packet")
+
+            packet = write_report_studio_packet(run_dir, sections=("summary", "artifacts"))
+
+            packet_path = run_dir / "reports" / "report_studio" / "mission_packet.json"
+            self.assertTrue(packet_path.exists())
+            self.assertEqual(packet["packet_path"], "reports/report_studio/mission_packet.json")
+            written = json.loads(packet_path.read_text())
+            self.assertEqual(written["packet_id"], "write_packet")
+            self.assertFalse((run_dir / "summary.json").read_text() == "")
+
+            with self.assertRaises(ValueError):
+                write_report_studio_packet(run_dir, report_dir=root / "outside")
+
     def test_unknown_section_is_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
             run_dir = self._write_minimal_run(Path(tmp) / "bad_section")
@@ -73,6 +116,28 @@ class ReportStudioPacketTests(unittest.TestCase):
 
     def _write_sample_run(self, run_dir: Path) -> Path:
         run_dir.mkdir(parents=True)
+        write_json(
+            run_dir / "manifest.json",
+            {
+                "scenario": "Mission Alpha",
+                "duration": 2.0,
+                "dt": 0.5,
+                "integrator": "semi_implicit_euler",
+                "generated_at_utc": "2026-04-26T12:30:00+00:00",
+            },
+        )
+        write_json(
+            run_dir / "scenario_resolved.json",
+            {
+                "name": "Mission Alpha Config",
+                "duration": 2.0,
+                "dt": 0.5,
+                "integrator": "semi_implicit_euler",
+                "environment": {"name": "test_range"},
+                "guidance": {"mode": "target_intercept"},
+                "sensors": {"seed": 7},
+            },
+        )
         write_json(
             run_dir / "summary.json",
             {
@@ -145,6 +210,18 @@ class ReportStudioPacketTests(unittest.TestCase):
         write_csv(run_dir / "sensors.csv", [{"time_s": 0.0, "gps_valid": 1.0}, {"time_s": 2.0, "gps_valid": 0.0}])
         write_csv(run_dir / "targets.csv", [{"time_s": 0.0, "target_id": "target-a"}])
         write_csv(run_dir / "interceptors.csv", [{"time_s": 0.0, "interceptor_id": "int-1"}])
+        write_json(
+            run_dir / "engagement_report.json",
+            {
+                "target_count": 1,
+                "interceptor_count": 1,
+                "target_ids": ["target-a"],
+                "interceptor_ids": ["int-1"],
+                "min_target_range_m": 8.0,
+                "min_interceptor_range_m": 9.0,
+                "first_interceptor_fuze_time_s": 2.0,
+            },
+        )
         (run_dir / "report.html").write_text("<html>report</html>")
         (run_dir / "plots").mkdir()
         (run_dir / "plots" / "altitude.svg").write_text("<svg></svg>")

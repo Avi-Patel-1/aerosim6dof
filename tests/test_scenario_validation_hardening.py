@@ -5,7 +5,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from aerosim6dof.analysis.scenario_validation import ScenarioAdvisory, validate_scenario_advisories
+from aerosim6dof.analysis.scenario_validation import (
+    ScenarioAdvisory,
+    summarize_scenario_advisories,
+    validate_scenario_advisories,
+)
 
 
 def codes(advisories: list[ScenarioAdvisory]) -> set[str]:
@@ -13,6 +17,51 @@ def codes(advisories: list[ScenarioAdvisory]) -> set[str]:
 
 
 class ScenarioValidationHardeningTests(unittest.TestCase):
+    def test_summary_reports_counts_highest_severity_and_actions(self) -> None:
+        advisories = [
+            ScenarioAdvisory("BAD_JSON", "error", "$", "Broken JSON", "Fix JSON syntax."),
+            ScenarioAdvisory("RISK", "warning", "dt", "Coarse dt", "Use a smaller dt."),
+            ScenarioAdvisory("REFERENCE_RESOLVED", "info", "vehicle_config", "Reference exists."),
+            ScenarioAdvisory("RISK_AGAIN", "warning", "duration", "Long run", "Use a smaller dt."),
+        ]
+
+        summary = summarize_scenario_advisories(advisories)
+
+        self.assertEqual(summary["counts_by_severity"], {"error": 1, "warning": 2, "info": 1})
+        self.assertEqual(summary["blocking_count"], 1)
+        self.assertEqual(summary["error_count"], 1)
+        self.assertEqual(summary["warning_count"], 2)
+        self.assertEqual(summary["info_count"], 1)
+        self.assertEqual(summary["highest_severity"], "error")
+        self.assertEqual(summary["suggested_next_actions"], ["Fix JSON syntax.", "Use a smaller dt."])
+
+    def test_checked_in_examples_smoke_without_warning_noise(self) -> None:
+        scenario_paths = sorted(Path("examples/scenarios").glob("*.json"))
+        self.assertGreater(len(scenario_paths), 5)
+
+        for path in scenario_paths:
+            with self.subTest(path=path.name):
+                advisories = validate_scenario_advisories(path)
+                noisy = [item.code for item in advisories if item.severity in {"error", "warning"}]
+                reference_codes = {
+                    item.path: item.code
+                    for item in advisories
+                    if item.code.startswith("REFERENCE_")
+                }
+
+                self.assertEqual(noisy, [])
+                self.assertEqual(reference_codes.get("vehicle_config"), "REFERENCE_RESOLVED")
+                self.assertEqual(reference_codes.get("environment_config"), "REFERENCE_RESOLVED")
+
+    def test_nominal_ascent_has_only_info_advisories(self) -> None:
+        advisories = validate_scenario_advisories(Path("examples/scenarios/nominal_ascent.json"))
+        summary = summarize_scenario_advisories(advisories)
+
+        self.assertEqual(summary["error_count"], 0)
+        self.assertEqual(summary["warning_count"], 0)
+        self.assertEqual(summary["highest_severity"], "info")
+        self.assertIn("REFERENCE_RESOLVED", codes(advisories))
+
     def test_reference_resolution_reports_existing_and_missing_files(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -117,6 +166,35 @@ class ScenarioValidationHardeningTests(unittest.TestCase):
 
         invalid = validate_scenario_advisories("[1, 2, 3]")
         self.assertEqual(invalid[0].code, "SCENARIO_TOP_LEVEL_NOT_OBJECT")
+
+    def test_missile_interceptor_and_realism_combo_advisories(self) -> None:
+        scenario = {
+            "vehicle_config": "../vehicles/baseline.json",
+            "environment_config": "../environments/calm.json",
+            "initial": {"position_m": [0.0, 0.0, 900.0], "velocity_mps": [80.0, 0.0, 0.0]},
+            "guidance": {"mode": "target_intercept", "target_position_m": [1000.0, 0.0, 900.0]},
+            "events": {"target_threshold_m": 25.0, "qbar_limit_pa": 90000.0, "load_limit_g": 12.0},
+            "targets": [{"id": "target"}],
+            "interceptors": [
+                {"target_id": "target", "dynamics_model": "missile_dynamics_v2"},
+                {"target_id": "target", "dynamics_model": "missile_dynamics_v1"},
+            ],
+            "missile": {"model": "custom_missile"},
+            "realism": {
+                "engine_spool": True,
+                "future_helper": True,
+                "sensor_latency": "yes",
+            },
+        }
+
+        found = codes(validate_scenario_advisories(scenario, base_dir=Path("examples/scenarios")))
+
+        self.assertIn("MISSILE_MODEL_UNSUPPORTED", found)
+        self.assertIn("INTERCEPTOR_DYNAMICS_UNSUPPORTED", found)
+        self.assertIn("MISSILE_INTERCEPTOR_MODEL_MISMATCH", found)
+        self.assertIn("REALISM_TOGGLE_PRESENT", found)
+        self.assertIn("REALISM_TOGGLE_UNSUPPORTED", found)
+        self.assertIn("REALISM_TOGGLE_INVALID", found)
 
 
 if __name__ == "__main__":

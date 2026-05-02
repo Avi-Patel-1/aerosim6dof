@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import uuid
@@ -76,6 +77,46 @@ class FileBackedStorage:
         except FileNotFoundError:
             return False
 
+    def save_layout(self, layout_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Persist a saved telemetry layout and return the stored JSON object."""
+
+        return self._save_public_record("layouts", layout_id, payload)
+
+    def list_layouts(self) -> list[dict[str, Any]]:
+        """Return saved telemetry layouts, newest first."""
+
+        return self._list_public_records("layouts")
+
+    def get_layout(self, layout_id: str) -> dict[str, Any] | None:
+        """Return one saved telemetry layout, or None when it is absent."""
+
+        return self.read_json("layouts", layout_id, default=None)
+
+    def delete_layout(self, layout_id: str) -> bool:
+        """Delete a saved telemetry layout."""
+
+        return self.delete_json("layouts", layout_id)
+
+    def save_report_metadata(self, report_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Persist report packet metadata and return the stored JSON object."""
+
+        return self._save_public_record("reports", report_id, payload)
+
+    def list_report_metadata(self) -> list[dict[str, Any]]:
+        """Return report packet metadata, newest first."""
+
+        return self._list_public_records("reports")
+
+    def save_draft_metadata(self, draft_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Persist scenario draft metadata and return the stored JSON object."""
+
+        return self._save_public_record("drafts", draft_id, payload)
+
+    def list_draft_metadata(self) -> list[dict[str, Any]]:
+        """Return scenario draft metadata, newest first."""
+
+        return self._list_public_records("drafts")
+
     def ensure_manifest(self) -> dict[str, Any]:
         self.root.mkdir(parents=True, exist_ok=True)
         for namespace in SAFE_NAMESPACES:
@@ -144,6 +185,33 @@ class FileBackedStorage:
             raise ValueError("storage manifest must be a JSON object")
         return data
 
+    def _save_public_record(self, namespace: str, item_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        safe_id = self._validate_item_id(item_id)
+        existing = self.read_json(namespace, safe_id, default=None)
+        data = _json_safe_object(payload)
+        now = _utc_now()
+        if "id" not in data:
+            data["id"] = safe_id
+        if "created_at" not in data:
+            data["created_at"] = existing.get("created_at") if isinstance(existing, dict) else now
+        if "updated_at" not in data:
+            data["updated_at"] = now
+        data = _json_safe_object(data)
+        self.write_json(namespace, safe_id, data)
+        return data
+
+    def _list_public_records(self, namespace: str) -> list[dict[str, Any]]:
+        records: list[dict[str, Any]] = []
+        for item_id in self.list_json(namespace):
+            data = self.read_json(namespace, item_id)
+            if not isinstance(data, dict):
+                raise ValueError(f"stored {namespace} item is not a JSON object: {item_id}")
+            if "id" not in data:
+                data = dict(data)
+                data["id"] = item_id
+            records.append(data)
+        return sorted(records, key=_record_sort_key, reverse=True)
+
     @staticmethod
     def _validate_namespace(namespace: str) -> str:
         if namespace not in SAFE_NAMESPACES:
@@ -171,6 +239,38 @@ def get_storage() -> FileBackedStorage:
 
 def storage_status() -> dict[str, Any]:
     return get_storage().status()
+
+
+def save_layout(layout_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return get_storage().save_layout(layout_id, payload)
+
+
+def list_layouts() -> list[dict[str, Any]]:
+    return get_storage().list_layouts()
+
+
+def get_layout(layout_id: str) -> dict[str, Any] | None:
+    return get_storage().get_layout(layout_id)
+
+
+def delete_layout(layout_id: str) -> bool:
+    return get_storage().delete_layout(layout_id)
+
+
+def save_report_metadata(report_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return get_storage().save_report_metadata(report_id, payload)
+
+
+def list_report_metadata() -> list[dict[str, Any]]:
+    return get_storage().list_report_metadata()
+
+
+def save_draft_metadata(draft_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return get_storage().save_draft_metadata(draft_id, payload)
+
+
+def list_draft_metadata() -> list[dict[str, Any]]:
+    return get_storage().list_draft_metadata()
 
 
 def _env_storage_value() -> str | None:
@@ -203,6 +303,46 @@ def _is_within(path: Path, root: Path) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _json_safe_object(payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError("storage payload must be a JSON object")
+    _validate_json_safe(payload)
+    try:
+        encoded = json.dumps(payload, allow_nan=False, sort_keys=True)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("storage payload must be JSON-safe") from exc
+    data = json.loads(encoded)
+    if not isinstance(data, dict):
+        raise ValueError("storage payload must be a JSON object")
+    return data
+
+
+def _validate_json_safe(value: Any, path: str = "$") -> None:
+    if value is None or isinstance(value, (bool, str, int)):
+        return
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError(f"storage payload contains non-finite number at {path}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_json_safe(item, f"{path}[{index}]")
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise ValueError(f"storage payload contains non-string key at {path}")
+            _validate_json_safe(item, f"{path}.{key}")
+        return
+    raise ValueError(f"storage payload contains non-JSON value at {path}")
+
+
+def _record_sort_key(record: dict[str, Any]) -> tuple[str, str]:
+    timestamp = record.get("updated_at") or record.get("created_at") or ""
+    item_id = record.get("id") or ""
+    return (str(timestamp), str(item_id))
 
 
 def _utc_now() -> str:

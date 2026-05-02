@@ -75,12 +75,31 @@ export type TelemetryChartLayout = {
   config?: Record<string, unknown>;
 };
 
+export type TelemetryOpsLayoutPayload = {
+  kind: "operations-telemetry";
+  version: 1;
+  subsystem: string;
+  channels: string[];
+  pinned: string[];
+  selectedChannel: string;
+  query: string;
+  savedAt: string;
+};
+
 export type RelatedChannelSuggestion = {
   channel: string;
   label: string;
   score: number;
   reasons: string[];
   metadata?: TelemetryChannelMetadata;
+};
+
+export type TruthSensorEstimateRole = "truth" | "sensor" | "estimate";
+
+export type TruthSensorEstimateGroup = {
+  role: TruthSensorEstimateRole;
+  label: string;
+  channels: RelatedChannelSuggestion[];
 };
 
 export type NearestTelemetryRow = {
@@ -139,6 +158,27 @@ function browserStorage(): Storage | null {
   }
 }
 
+function storageGetItem(key: string): string | null {
+  try {
+    return browserStorage()?.getItem(key) || null;
+  } catch {
+    return null;
+  }
+}
+
+function storageSetItem(key: string, value: string): boolean {
+  try {
+    const storage = browserStorage();
+    if (!storage) {
+      return false;
+    }
+    storage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function safeJsonParse<T>(raw: string | null, fallback: T): T {
   if (!raw) {
     return fallback;
@@ -155,12 +195,19 @@ function asFiniteNumber(value: TelemetryRow[string] | undefined): number | null 
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-function normalized(value: string | undefined): string {
-  return (value || "").trim().toLowerCase();
+function normalized(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
 function isTelemetryOpsGroup(value: string): value is TelemetryOpsGroup {
   return TELEMETRY_OPS_GROUPS.includes(value as TelemetryOpsGroup);
+}
+
+function cleanStringArray(values: unknown, limit = 64): string[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return Array.from(new Set(values.filter((value): value is string => typeof value === "string" && value.trim().length > 0))).slice(0, limit);
 }
 
 export function collectTelemetryChannels(
@@ -390,6 +437,15 @@ export function telemetryRowsToCsv(
   return lines.join("\n");
 }
 
+export function selectedTelemetryRowsToCsvText(
+  rowSets: TelemetryRow[] | TelemetryRow[][] | TelemetryCsvRowSet[],
+  selectedChannels: string[],
+  options: TelemetryCsvOptions = {},
+): string {
+  const channels = cleanStringArray(selectedChannels, 128);
+  return telemetryRowsToCsv(rowSets, channels, options);
+}
+
 function isCsvRowSet(value: unknown): value is TelemetryCsvRowSet {
   return Boolean(value && typeof value === "object" && Array.isArray((value as TelemetryCsvRowSet).rows));
 }
@@ -409,7 +465,7 @@ export function downloadTelemetryCsv(filename: string, csv: string): boolean {
 }
 
 function readLayouts(): TelemetryChartLayout[] {
-  const parsed = safeJsonParse<unknown>(browserStorage()?.getItem(LAYOUTS_STORAGE_KEY) || null, []);
+  const parsed = safeJsonParse<unknown>(storageGetItem(LAYOUTS_STORAGE_KEY), []);
   if (!Array.isArray(parsed)) {
     return [];
   }
@@ -446,7 +502,9 @@ export function saveTelemetryChartLayout(layout: Omit<Partial<TelemetryChartLayo
     config: layout.config,
   };
   const next = [saved, ...existing.filter((item) => item.id !== saved.id)];
-  storage?.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(next));
+  if (storage) {
+    storageSetItem(LAYOUTS_STORAGE_KEY, JSON.stringify(next));
+  }
   return saved;
 }
 
@@ -454,12 +512,14 @@ export function deleteTelemetryChartLayout(id: string): boolean {
   const storage = browserStorage();
   const existing = readLayouts();
   const next = existing.filter((layout) => layout.id !== id);
-  storage?.setItem(LAYOUTS_STORAGE_KEY, JSON.stringify(next));
+  if (storage) {
+    storageSetItem(LAYOUTS_STORAGE_KEY, JSON.stringify(next));
+  }
   return next.length !== existing.length;
 }
 
 function readPinnedChannels(): string[] {
-  const parsed = safeJsonParse<unknown>(browserStorage()?.getItem(PINNED_CHANNELS_STORAGE_KEY) || null, []);
+  const parsed = safeJsonParse<unknown>(storageGetItem(PINNED_CHANNELS_STORAGE_KEY), []);
   return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
 }
 
@@ -480,8 +540,49 @@ export function togglePinnedTelemetryChannel(channel: string): string[] {
     pinned.add(channel);
   }
   const next = Array.from(pinned).sort();
-  storage?.setItem(PINNED_CHANNELS_STORAGE_KEY, JSON.stringify(next));
+  if (storage) {
+    storageSetItem(PINNED_CHANNELS_STORAGE_KEY, JSON.stringify(next));
+  }
   return next;
+}
+
+export function buildTelemetryOpsLayoutPayload(input: {
+  subsystem: string;
+  channels: string[];
+  pinned?: string[];
+  selectedChannel?: string;
+  query?: string;
+}): TelemetryOpsLayoutPayload {
+  return {
+    kind: "operations-telemetry",
+    version: 1,
+    subsystem: input.subsystem || "vehicle",
+    channels: cleanStringArray(input.channels),
+    pinned: cleanStringArray(input.pinned || []),
+    selectedChannel: typeof input.selectedChannel === "string" ? input.selectedChannel : "",
+    query: typeof input.query === "string" ? input.query : "",
+    savedAt: new Date().toISOString(),
+  };
+}
+
+export function parseTelemetryOpsLayoutPayload(config: unknown): TelemetryOpsLayoutPayload | null {
+  if (!config || typeof config !== "object") {
+    return null;
+  }
+  const raw = config as Record<string, unknown>;
+  if (raw.kind !== "operations-telemetry") {
+    return null;
+  }
+  return {
+    kind: "operations-telemetry",
+    version: 1,
+    subsystem: typeof raw.subsystem === "string" && raw.subsystem ? raw.subsystem : "vehicle",
+    channels: cleanStringArray(raw.channels),
+    pinned: cleanStringArray(raw.pinned),
+    selectedChannel: typeof raw.selectedChannel === "string" ? raw.selectedChannel : "",
+    query: typeof raw.query === "string" ? raw.query : "",
+    savedAt: typeof raw.savedAt === "string" ? raw.savedAt : "",
+  };
 }
 
 function channelTokens(channel: string): Set<string> {
@@ -505,6 +606,116 @@ function canonicalChannelTerms(channel: string): Set<string> {
   if (/baro/.test(key)) terms.add("baro");
   if (/pitot/.test(key)) terms.add("pitot");
   return terms;
+}
+
+function comparisonRoleForChannel(channel: string, metadata?: TelemetryChannelMetadata): TruthSensorEstimateRole | null {
+  const key = normalized(channel);
+  const role = normalized(metadata?.role as string | undefined);
+  const source = normalized(metadata?.source as string | undefined);
+  const text = `${key} ${role} ${source} ${normalized(metadata?.description)} ${normalized(metadata?.group)}`;
+  if (role === "truth" || source === "truth" || /^truth_/.test(key) || /\btruth\b/.test(text)) {
+    return "truth";
+  }
+  if (
+    role === "sensor" ||
+    source === "sensors" ||
+    /(^|_)(sensor|gps|gnss|imu|baro|radar|pitot|magnetometer|optical_flow|measured)(_|$)/.test(key) ||
+    /\bsensor\b/.test(text)
+  ) {
+    return "sensor";
+  }
+  if (
+    role === "estimate" ||
+    source === "estimate" ||
+    /(^|_)(estimate|estimated|est|ekf|filter|nav_filter|navigation_filter)(_|$)/.test(key) ||
+    /\b(estimate|estimated|filter)\b/.test(text)
+  ) {
+    return "estimate";
+  }
+  if (source === "history" && /(^|_)(position|velocity|altitude|speed|roll|pitch|yaw|quat|rate|state)(_|$)/.test(key)) {
+    return "truth";
+  }
+  return null;
+}
+
+function comparisonTerms(channel: string): Set<string> {
+  const terms = canonicalChannelTerms(channel);
+  [
+    "truth",
+    "sensor",
+    "sensors",
+    "gps",
+    "gnss",
+    "imu",
+    "baro",
+    "radar",
+    "pitot",
+    "estimate",
+    "estimated",
+    "est",
+    "filter",
+    "history",
+    "measured",
+  ].forEach((term) => terms.delete(term));
+  return terms;
+}
+
+export function groupTruthSensorEstimateChannels(
+  selectedChannel: string,
+  channels: string[],
+  metadata?: Record<string, TelemetryChannelMetadata>,
+  limitPerRole = 4,
+): TruthSensorEstimateGroup[] {
+  const baseTerms = comparisonTerms(selectedChannel);
+  const groups: Record<TruthSensorEstimateRole, RelatedChannelSuggestion[]> = {
+    truth: [],
+    sensor: [],
+    estimate: [],
+  };
+
+  channels.forEach((candidate) => {
+    const candidateMeta = metadataFor(metadata, candidate);
+    const role = comparisonRoleForChannel(candidate, candidateMeta);
+    if (!role) {
+      return;
+    }
+    const candidateTerms = comparisonTerms(candidate);
+    const reasons: string[] = [];
+    let score = candidate === selectedChannel ? 20 : 0;
+    baseTerms.forEach((term) => {
+      if (candidateTerms.has(term)) {
+        score += ["altitude", "speed", "x", "y", "z"].includes(term) ? 3 : 1;
+        reasons.push(`shared ${term}`);
+      }
+    });
+    if (!selectedChannel && candidateTerms.size > 0) {
+      score += 1;
+    }
+    if (candidate === selectedChannel) {
+      reasons.push("selected");
+    }
+    if (score <= 0) {
+      return;
+    }
+    groups[role].push({
+      channel: candidate,
+      label: channelLabel(metadata, candidate),
+      score,
+      reasons,
+      metadata: candidateMeta,
+    });
+  });
+
+  const orderedGroups: TruthSensorEstimateGroup[] = [
+    { role: "truth", label: "Truth", channels: groups.truth },
+    { role: "sensor", label: "Sensor", channels: groups.sensor },
+    { role: "estimate", label: "Estimate", channels: groups.estimate },
+  ];
+
+  return orderedGroups.map((group) => ({
+    ...group,
+    channels: group.channels.sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, limitPerRole),
+  }));
 }
 
 export function suggestRelatedTelemetryChannels(

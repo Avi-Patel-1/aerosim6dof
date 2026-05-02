@@ -1,6 +1,11 @@
 import { Activity, RefreshCw, XCircle } from "lucide-react";
+import type { CSSProperties } from "react";
 import type { JobSummary } from "../types";
 import {
+  buildCancelRequest,
+  buildRetryRequest,
+  canCancel as canCancelProgress,
+  canRetry as canRetryProgress,
   collectLiveProgressStates,
   formatElapsedLabel,
   formatLiveProgressLabel,
@@ -24,6 +29,22 @@ function actionLabel(action: string): string {
   return (action || "job").replaceAll("_", " ");
 }
 
+const controlRowStyle = {
+  alignItems: "center",
+  display: "flex",
+  gap: "12px",
+  justifyContent: "flex-end",
+  marginTop: "2px"
+} satisfies CSSProperties;
+
+const controlButtonStyle = {
+  alignItems: "center",
+  display: "inline-flex",
+  gap: "8px",
+  minHeight: "36px",
+  padding: "0 14px"
+} satisfies CSSProperties;
+
 export function LiveProgressPanel({
   jobs,
   progress,
@@ -44,9 +65,10 @@ export function LiveProgressPanel({
       </div>
       <div className="job-list">
         {visibleStates.map((state) => {
-          const terminal = isTerminalProgressPhase(state.phase);
-          const canCancel = Boolean(onCancel && state.cancellable && !terminal);
-          const canRetry = Boolean(onRetry && (state.phase === "failed" || state.phase === "cancelled"));
+          const cancelRequest = buildCancelRequest(state);
+          const retryRequest = buildRetryRequest(state);
+          const cancelEnabled = Boolean(onCancel && canCancelProgress(state) && cancelRequest.enabled);
+          const retryEnabled = Boolean(onRetry && canRetryProgress(state) && retryRequest.enabled);
           return (
             <article className="job-item" key={state.job_id}>
               <div>
@@ -66,17 +88,31 @@ export function LiveProgressPanel({
                   </a>
                 )}
               </div>
-              {(canCancel || canRetry) && (
-                <div className="artifact-links">
-                  {canCancel && (
-                    <button type="button" className="secondary-action" onClick={() => onCancel?.(state.job_id, state)}>
-                      <XCircle size={14} />
+              {(cancelEnabled || retryEnabled) && (
+                <div className="artifact-links" style={controlRowStyle}>
+                  {cancelEnabled && (
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      style={controlButtonStyle}
+                      title={cancelRequest.path}
+                      aria-label={`Cancel ${actionLabel(state.action)}`}
+                      onClick={() => onCancel?.(state.job_id, state)}
+                    >
+                      <XCircle size={15} />
                       Cancel
                     </button>
                   )}
-                  {canRetry && (
-                    <button type="button" className="secondary-action" onClick={() => onRetry?.(state.action, state.job_id, state)}>
-                      <RefreshCw size={14} />
+                  {retryEnabled && (
+                    <button
+                      type="button"
+                      className="secondary-action"
+                      style={controlButtonStyle}
+                      title={retryRequest.path}
+                      aria-label={`Retry ${actionLabel(state.action)}`}
+                      onClick={() => onRetry?.(state.action, state.job_id, state)}
+                    >
+                      <RefreshCw size={15} />
                       Retry
                     </button>
                   )}
