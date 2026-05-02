@@ -32,13 +32,16 @@ import {
   createScenarioDraft,
   getCapabilities,
   getEnvironments,
+  getExamplesGallery,
   getJob,
   getJobs,
+  getReportStudioPacket,
   getRun,
   getRunAlarms,
   getRuns,
   getScenario,
   getScenarios,
+  getStorageStatus,
   getTelemetry,
   getVehicles,
   jobEventsUrl,
@@ -46,13 +49,19 @@ import {
   validateScenario,
   validateScenarioJson
 } from "../api";
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, ScenarioValidation, TelemetryRow, TelemetrySeries } from "../types";
+import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetryRow, TelemetrySeries } from "../types";
+import type { ExamplesGalleryCard } from "../examplesGallery";
+import type { ReportStudioExportPayload, ReportStudioExportRequest, ReportStudioPacket } from "../reportStudio";
 import { activeAlarmCount } from "../alarms";
 import { channelLabel, channelLabelWithUnit } from "../telemetry";
 import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
+import { CampaignDesigner } from "./CampaignDesigner";
+import { ExamplesGallery } from "./ExamplesGallery";
+import { LiveProgressPanel } from "./LiveProgressPanel";
 import { OperationsTelemetryPanel } from "./OperationsTelemetryPanel";
 import { ParameterInfoPanel } from "./ParameterInfoPanel";
 import { ReplayScene } from "./ReplayScene";
+import { ReportStudio } from "./ReportStudio";
 import { ScenarioBuilderV2 } from "./ScenarioBuilderV2";
 import { TelemetryChart } from "./TelemetryChart";
 
@@ -202,6 +211,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [vehicles, setVehicles] = useState<ConfigSummary[]>([]);
   const [environments, setEnvironments] = useState<ConfigSummary[]>([]);
   const [capabilities, setCapabilities] = useState<Capability[]>([]);
+  const [examplesGallery, setExamplesGallery] = useState<ExamplesGalleryCard[]>([]);
+  const [storageStatus, setStorageStatus] = useState<StorageStatus | null>(null);
   const [runs, setRuns] = useState<RunSummary[]>(initialHandoff?.run ? [initialHandoff.run] : []);
   const [selectedScenario, setSelectedScenario] = useState("nominal_ascent");
   const [selectedVehicle, setSelectedVehicle] = useState("baseline");
@@ -234,6 +245,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [busyAction, setBusyAction] = useState("");
   const [activeJob, setActiveJob] = useState<JobSummary | null>(null);
   const [jobHistory, setJobHistory] = useState<JobSummary[]>([]);
+  const [reportPacket, setReportPacket] = useState<ReportStudioPacket | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<ActionResult[]>([]);
   const [scenarioText, setScenarioText] = useState("");
@@ -270,8 +283,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([getScenarios(), getVehicles(), getEnvironments(), getCapabilities(), getRuns(), getJobs()])
-      .then(([scenarioItems, vehicleItems, environmentItems, capabilityItems, runItems, jobItems]) => {
+    Promise.all([getScenarios(), getVehicles(), getEnvironments(), getCapabilities(), getRuns(), getJobs(), getExamplesGallery(), getStorageStatus().catch(() => null)])
+      .then(([scenarioItems, vehicleItems, environmentItems, capabilityItems, runItems, jobItems, galleryItems, storage]) => {
         if (!mounted) {
           return;
         }
@@ -281,6 +294,8 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         setCapabilities(capabilityItems);
         setRuns(runItems);
         setJobHistory(jobItems);
+        setExamplesGallery(galleryItems);
+        setStorageStatus(storage);
         setSelectedScenario(scenarioItems.find((item) => item.id === "nominal_ascent")?.id ?? scenarioItems[0]?.id ?? "");
         setSelectedVehicle(vehicleItems.find((item) => item.id === "baseline")?.id ?? vehicleItems[0]?.id ?? "");
         setSecondVehicle(vehicleItems.find((item) => item.id === "electric_uav")?.id ?? vehicleItems[1]?.id ?? vehicleItems[0]?.id ?? "");
@@ -354,6 +369,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       setCurrentIndex(0);
     }
     setAlarms([]);
+    setReportPacket(null);
     setAcknowledgedAlarms({});
     Promise.all([getRun(selectedRunId), getTelemetry(selectedRunId, 3), getRunAlarms(selectedRunId).catch(() => [])])
       .then(([detail, series, alarmItems]) => {
@@ -374,6 +390,34 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       mounted = false;
     };
   }, [selectedRunId]);
+
+  useEffect(() => {
+    if (activeTab !== "reports" || !selectedRunId) {
+      return;
+    }
+    let mounted = true;
+    setReportLoading(true);
+    getReportStudioPacket(selectedRunId)
+      .then((packet) => {
+        if (mounted) {
+          setReportPacket(packet);
+        }
+      })
+      .catch((error: Error) => {
+        if (mounted) {
+          setReportPacket(null);
+          setMessage(error.message);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setReportLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab, selectedRunId]);
 
   useEffect(() => {
     if (!compareRunId || compareRunId === selectedRunId) {
@@ -584,6 +628,52 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Draft run failed");
     }
+  };
+
+  const openExample = async (card: ExamplesGalleryCard) => {
+    setMessage("");
+    setSelectedScenario(card.id);
+    setActiveTab("editor");
+  };
+
+  const cloneExample = async (card: ExamplesGalleryCard) => {
+    setBusyAction("clone_example");
+    setMessage("");
+    try {
+      const detail = await getScenario(card.id);
+      const cloned = {
+        ...detail.raw,
+        name: `${String(detail.raw.name ?? detail.name)} Clone`
+      };
+      setSelectedScenario(card.id);
+      setScenarioText(JSON.stringify(cloned, null, 2));
+      setScenarioValidation(null);
+      setDraftInfo(null);
+      setActiveTab("editor");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Example clone failed");
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const runExample = async (card: ExamplesGalleryCard) => {
+    await runTool("run", { scenario_id: card.id }, "replay");
+  };
+
+  const recordReportStudioExport = (request: ReportStudioExportRequest, payload: ReportStudioExportPayload | null) => {
+    setResults((items) => [
+      {
+        action: "report_studio_export",
+        status: payload ? "completed" : "failed",
+        message: payload ? `${request.format.toUpperCase()} packet prepared in browser` : "No report packet loaded",
+        output_id: selectedRunId || null,
+        output_dir: runDetail?.run_dir ?? null,
+        data: { request, payload },
+        artifacts: runDetail?.artifacts ?? []
+      },
+      ...items
+    ]);
   };
 
   const chartRows = useMemo(() => {
@@ -1052,36 +1142,50 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "campaigns" && (
-          <div className="tool-grid">
-            <ActionCard title="Batch" icon={<Boxes size={18} />} running={busyAction === "batch"} onRun={() => runTool("batch", {}, "reports")} />
-            <ActionCard
-              title="Monte Carlo"
-              icon={<Sparkles size={18} />}
-              running={busyAction === "monte_carlo"}
-              onRun={() => runTool("monte_carlo", { scenario_id: selectedScenario, samples: Number(mcSamples), seed: 77, mass_sigma_kg: 0.2, wind_sigma_mps: 0.1 }, "reports")}
-            >
-              <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
-              <TextField label="Samples" value={mcSamples} onChange={setMcSamples} />
-            </ActionCard>
-            <ActionCard
-              title="Sweep"
-              icon={<Settings2 size={18} />}
-              running={busyAction === "sweep"}
-              onRun={() => runTool("sweep", { scenario_id: selectedScenario, parameter: sweepParameter, values: sweepValues, max_runs: 20 }, "reports")}
-            >
-              <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
-              <TextField label="Path" value={sweepParameter} onChange={setSweepParameter} />
-              <TextField label="Values" value={sweepValues} onChange={setSweepValues} />
-            </ActionCard>
-            <ActionCard
-              title="Faults"
-              icon={<ShieldAlert size={18} />}
-              running={busyAction === "fault_campaign"}
-              onRun={() => runTool("fault_campaign", { scenario_id: selectedScenario, faults: faultList }, "reports")}
-            >
-              <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
-              <TextField label="Faults" value={faults} onChange={setFaults} />
-            </ActionCard>
+          <div className="stacked-surface">
+            <CampaignDesigner
+              scenarios={scenarios}
+              capabilities={capabilities}
+              busyAction={busyAction}
+              initialDraft={{ scenarioId: selectedScenario }}
+              onDraftChange={(draft) => {
+                if (draft.scenarioId && draft.scenarioId !== selectedScenario) {
+                  setSelectedScenario(draft.scenarioId);
+                }
+              }}
+              onRunPlan={({ action, params }) => runTool(action, params, "reports")}
+            />
+            <div className="tool-grid compact-tool-grid">
+              <ActionCard title="Batch" icon={<Boxes size={18} />} running={busyAction === "batch"} onRun={() => runTool("batch", {}, "reports")} />
+              <ActionCard
+                title="Monte Carlo"
+                icon={<Sparkles size={18} />}
+                running={busyAction === "monte_carlo"}
+                onRun={() => runTool("monte_carlo", { scenario_id: selectedScenario, samples: Number(mcSamples), seed: 77, mass_sigma_kg: 0.2, wind_sigma_mps: 0.1 }, "reports")}
+              >
+                <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
+                <TextField label="Samples" value={mcSamples} onChange={setMcSamples} />
+              </ActionCard>
+              <ActionCard
+                title="Sweep"
+                icon={<Settings2 size={18} />}
+                running={busyAction === "sweep"}
+                onRun={() => runTool("sweep", { scenario_id: selectedScenario, parameter: sweepParameter, values: sweepValues, max_runs: 20 }, "reports")}
+              >
+                <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
+                <TextField label="Path" value={sweepParameter} onChange={setSweepParameter} />
+                <TextField label="Values" value={sweepValues} onChange={setSweepValues} />
+              </ActionCard>
+              <ActionCard
+                title="Faults"
+                icon={<ShieldAlert size={18} />}
+                running={busyAction === "fault_campaign"}
+                onRun={() => runTool("fault_campaign", { scenario_id: selectedScenario, faults: faultList }, "reports")}
+              >
+                <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
+                <TextField label="Faults" value={faults} onChange={setFaults} />
+              </ActionCard>
+            </div>
           </div>
         )}
 
@@ -1131,34 +1235,43 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "models" && (
-          <div className="tool-grid">
-            <ActionCard title="Vehicle" icon={<FileJson size={18} />} running={busyAction === "inspect_vehicle"} onRun={() => runTool("inspect_vehicle", { vehicle_id: selectedVehicle }, "reports")}>
-              <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
-            </ActionCard>
-            <ActionCard title="Diff" icon={<ScanLine size={18} />} running={busyAction === "config_diff"} onRun={() => runTool("config_diff", { vehicle_a_id: selectedVehicle, vehicle_b_id: secondVehicle }, "reports")}>
-              <SelectField label="A" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
-              <SelectField label="B" value={secondVehicle} onChange={setSecondVehicle} options={vehicleOptions} />
-            </ActionCard>
-            <ActionCard title="Scenario" icon={<Route size={18} />} running={busyAction === "generate_scenario"} onRun={() => runTool("generate_scenario", { name: generatedName }, "reports")}>
-              <TextField label="Name" value={generatedName} onChange={setGeneratedName} />
-            </ActionCard>
-            <ActionCard title="Aero" icon={<Compass size={18} />} running={busyAction === "aero_report"} onRun={() => runTool("aero_report", { vehicle_id: selectedVehicle }, "reports")}>
-              <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
-              <button className="secondary-action" onClick={() => runTool("inspect_aero", { vehicle_id: selectedVehicle }, "reports")}>Inspect</button>
-              <button className="secondary-action" onClick={() => runTool("aero_sweep", { vehicle_id: selectedVehicle }, "reports")}>Sweep</button>
-            </ActionCard>
-            <ActionCard title="Propulsion" icon={<Activity size={18} />} running={busyAction === "thrust_curve_report"} onRun={() => runTool("thrust_curve_report", { vehicle_id: selectedVehicle }, "reports")}>
-              <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
-              <button className="secondary-action" onClick={() => runTool("inspect_propulsion", { vehicle_id: selectedVehicle }, "reports")}>Inspect</button>
-            </ActionCard>
-            <ActionCard
-              title="Environment"
-              icon={<RadioTower size={18} />}
-              running={busyAction === "environment_report"}
-              onRun={() => runTool("environment_report", { environment_id: selectedEnvironment }, "reports")}
-            >
-              <SelectField label="Environment" value={selectedEnvironment} onChange={setSelectedEnvironment} options={environmentOptions} />
-            </ActionCard>
+          <div className="stacked-surface">
+            <ExamplesGallery
+              cards={examplesGallery}
+              selectedId={selectedScenario}
+              onOpen={openExample}
+              onClone={cloneExample}
+              onRun={runExample}
+            />
+            <div className="tool-grid compact-tool-grid">
+              <ActionCard title="Vehicle" icon={<FileJson size={18} />} running={busyAction === "inspect_vehicle"} onRun={() => runTool("inspect_vehicle", { vehicle_id: selectedVehicle }, "reports")}>
+                <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
+              </ActionCard>
+              <ActionCard title="Diff" icon={<ScanLine size={18} />} running={busyAction === "config_diff"} onRun={() => runTool("config_diff", { vehicle_a_id: selectedVehicle, vehicle_b_id: secondVehicle }, "reports")}>
+                <SelectField label="A" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
+                <SelectField label="B" value={secondVehicle} onChange={setSecondVehicle} options={vehicleOptions} />
+              </ActionCard>
+              <ActionCard title="Scenario" icon={<Route size={18} />} running={busyAction === "generate_scenario"} onRun={() => runTool("generate_scenario", { name: generatedName }, "reports")}>
+                <TextField label="Name" value={generatedName} onChange={setGeneratedName} />
+              </ActionCard>
+              <ActionCard title="Aero" icon={<Compass size={18} />} running={busyAction === "aero_report"} onRun={() => runTool("aero_report", { vehicle_id: selectedVehicle }, "reports")}>
+                <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
+                <button className="secondary-action" onClick={() => runTool("inspect_aero", { vehicle_id: selectedVehicle }, "reports")}>Inspect</button>
+                <button className="secondary-action" onClick={() => runTool("aero_sweep", { vehicle_id: selectedVehicle }, "reports")}>Sweep</button>
+              </ActionCard>
+              <ActionCard title="Propulsion" icon={<Activity size={18} />} running={busyAction === "thrust_curve_report"} onRun={() => runTool("thrust_curve_report", { vehicle_id: selectedVehicle }, "reports")}>
+                <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
+                <button className="secondary-action" onClick={() => runTool("inspect_propulsion", { vehicle_id: selectedVehicle }, "reports")}>Inspect</button>
+              </ActionCard>
+              <ActionCard
+                title="Environment"
+                icon={<RadioTower size={18} />}
+                running={busyAction === "environment_report"}
+                onRun={() => runTool("environment_report", { environment_id: selectedEnvironment }, "reports")}
+              >
+                <SelectField label="Environment" value={selectedEnvironment} onChange={setSelectedEnvironment} options={environmentOptions} />
+              </ActionCard>
+            </div>
           </div>
         )}
 
@@ -1206,6 +1319,16 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
 
         {activeTab === "reports" && (
           <div className="reports-layout">
+            <section className="report-panel report-studio-panel">
+              <div className="section-row">
+                <div className="section-title">
+                  <FileJson size={16} />
+                  <h3>Mission Packet</h3>
+                </div>
+                {reportLoading && <Loader2 className="spin" size={16} />}
+              </div>
+              <ReportStudio packet={reportPacket} onExportRequest={recordReportStudioExport} />
+            </section>
             <section className="report-panel">
               <div className="section-title">
                 <FileJson size={16} />
@@ -1249,35 +1372,23 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 <Settings2 size={16} />
                 <h3>Surface</h3>
               </div>
+              <div className="metric-grid">
+                <div>
+                  <span>Storage</span>
+                  <strong>{storageStatus?.persistent ? "persistent" : "local"}</strong>
+                </div>
+                <div>
+                  <span>Writable</span>
+                  <strong>{storageStatus?.writable ? "yes" : "check"}</strong>
+                </div>
+              </div>
               <div className="capability-list">
                 {capabilities.map((capability) => (
                   <span key={capability.id}>{capability.label}</span>
                 ))}
               </div>
             </section>
-            <section className="report-panel">
-              <div className="section-title">
-                <Activity size={16} />
-                <h3>Jobs</h3>
-              </div>
-              <div className="job-list">
-                {jobHistory.slice(0, 8).map((job) => (
-                  <div className="job-item" key={job.id}>
-                    <div>
-                      <strong>{job.action.replaceAll("_", " ")}</strong>
-                      <span>{job.status} / {Math.round(job.progress * 100)}%</span>
-                    </div>
-                    <div className="job-progress dark">
-                      <i style={{ width: `${Math.max(3, Math.round(job.progress * 100))}%` }} />
-                    </div>
-                    {job.events.slice(-3).map((event) => (
-                      <p key={`${job.id}-${event.time_utc}-${event.message}`}>{event.message}</p>
-                    ))}
-                  </div>
-                ))}
-                {jobHistory.length === 0 && <div className="empty-state">No jobs yet</div>}
-              </div>
-            </section>
+            <LiveProgressPanel jobs={jobHistory} />
           </div>
         )}
       </section>

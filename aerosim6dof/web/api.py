@@ -24,7 +24,9 @@ from aerosim6dof.analysis.compare import compare_histories
 from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, inspect_vehicle
 from aerosim6dof.analysis.environment import environment_report
 from aerosim6dof.analysis.engagement import engagement_report
+from aerosim6dof.analysis.examples_gallery import build_examples_gallery
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
+from aerosim6dof.analysis.scenario_validation import validate_scenario_advisories
 from aerosim6dof.analysis.scenario_builder import (
     scenario_builder_explanation,
     scenario_builder_recommendations,
@@ -38,12 +40,15 @@ from aerosim6dof.gnc.trim import simple_trim, write_trim_result
 from aerosim6dof.metadata import VERSION
 from aerosim6dof.reports.csv_writer import read_csv
 from aerosim6dof.reports.json_writer import write_json
+from aerosim6dof.reports.studio import assemble_report_studio_packet
 from aerosim6dof.scenario import Scenario
 from aerosim6dof.simulation.campaign import run_sweep_campaign
 from aerosim6dof.simulation.fault_campaign import FAULT_LIBRARY, run_fault_campaign
 from aerosim6dof.simulation.runner import batch_run, linearize_scenario, monte_carlo_run, report_run, run_scenario
 from aerosim6dof.telemetry.metadata import metadata_for_channels
 
+from .progress import progress_from_job_summary
+from .storage import storage_status
 from .models import (
     ActionRequest,
     ActionResult,
@@ -131,6 +136,16 @@ def create_app() -> FastAPI:
 @router.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "version": VERSION}
+
+
+@router.get("/storage/status")
+def get_storage_status() -> dict[str, Any]:
+    return _safe_json(storage_status())
+
+
+@router.get("/examples-gallery")
+def get_examples_gallery() -> list[dict[str, Any]]:
+    return _safe_json(build_examples_gallery(EXAMPLES_DIR))
 
 
 @router.get("/scenarios")
@@ -223,9 +238,11 @@ def list_capabilities() -> list[dict[str, Any]]:
 @router.post("/validate")
 def validate_scenario(payload: ValidateRequest) -> dict[str, Any]:
     raw_config: dict[str, Any] = {}
+    advisory_base = SCENARIOS_DIR
     try:
         if payload.scenario_id:
             path = _scenario_path(payload.scenario_id)
+            advisory_base = path.parent
             raw_config = load_json(path)
             scenario = Scenario.from_file(path)
         elif payload.scenario is not None:
@@ -234,7 +251,12 @@ def validate_scenario(payload: ValidateRequest) -> dict[str, Any]:
         else:
             raise HTTPException(status_code=400, detail="scenario_id or scenario is required")
     except ValueError as exc:
-        return {"valid": False, "errors": [str(exc)], **_scenario_builder_advisory(raw_config)}
+        return {
+            "valid": False,
+            "errors": [str(exc)],
+            **_scenario_builder_advisory(raw_config),
+            "advisories": _scenario_validation_advisories(raw_config, advisory_base),
+        }
     return {
         "valid": True,
         "scenario": scenario.name,
@@ -242,6 +264,7 @@ def validate_scenario(payload: ValidateRequest) -> dict[str, Any]:
         "duration": scenario.duration,
         "integrator": scenario.integrator,
         **_scenario_builder_advisory(raw_config),
+        "advisories": _scenario_validation_advisories(raw_config, advisory_base),
     }
 
 
@@ -315,6 +338,13 @@ def stream_job_events(job_id: str) -> StreamingResponse:
     return StreamingResponse(_job_event_stream(job_id), media_type="text/event-stream")
 
 
+@router.get("/jobs/{job_id}/progress")
+def get_job_progress(job_id: str) -> dict[str, Any]:
+    job = _job_summary(job_id)
+    payload = job.model_dump() if hasattr(job, "model_dump") else job.dict()
+    return _safe_json(progress_from_job_summary(payload).to_dict())
+
+
 @router.get("/runs", response_model=list[RunSummary])
 def list_runs(limit: int = Query(80, ge=1, le=300)) -> list[RunSummary]:
     run_dirs = _discover_run_dirs()
@@ -355,6 +385,22 @@ def get_run_alarms(run_id: str) -> list[AlarmSummary]:
         return []
 
 
+@router.get("/runs/{run_id}/report-studio")
+def get_report_studio_packet(run_id: str, sections: str | None = Query(default=None)) -> dict[str, Any]:
+    run_dir = _run_dir_from_id(run_id)
+    section_list = [item.strip() for item in sections.split(",") if item.strip()] if sections else None
+    try:
+        return _safe_json(
+            assemble_report_studio_packet(
+                run_dir,
+                sections=section_list,
+                artifact_base_url=f"/api/artifacts/{run_id}",
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/artifacts/{run_id}/{artifact_path:path}")
 def get_artifact(run_id: str, artifact_path: str) -> FileResponse:
     output_dir = _output_dir_from_id(run_id)
@@ -377,6 +423,13 @@ def _scenario_builder_advisory(config: dict[str, Any]) -> dict[str, Any]:
         }
     except Exception:  # pragma: no cover - advisory data must not break validation
         return {"summary": {}, "warnings": [], "explanation": "", "recommendations": []}
+
+
+def _scenario_validation_advisories(config: dict[str, Any], base_dir: Path) -> list[dict[str, Any]]:
+    try:
+        return [advisory.to_dict() for advisory in validate_scenario_advisories(config, base_dir=base_dir)]
+    except Exception:  # pragma: no cover - advisories must not block validation
+        return []
 
 
 def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:

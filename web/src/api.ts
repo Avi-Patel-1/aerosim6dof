@@ -1,4 +1,7 @@
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, ScenarioValidation, TelemetrySeries } from "./types";
+import type { ExamplesGalleryCard } from "./examplesGallery";
+import type { LiveProgressState } from "./liveProgress";
+import type { ReportStudioPacket, ReportStudioSectionId } from "./reportStudio";
+import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetrySeries } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -41,6 +44,14 @@ export function getCapabilities(): Promise<Capability[]> {
   return request<Capability[]>("/api/capabilities");
 }
 
+export function getStorageStatus(): Promise<StorageStatus> {
+  return request<StorageStatus>("/api/storage/status");
+}
+
+export function getExamplesGallery(): Promise<ExamplesGalleryCard[]> {
+  return request<ExamplesGalleryCard[]>("/api/examples-gallery");
+}
+
 export function getRuns(): Promise<RunSummary[]> {
   return request<RunSummary[]>("/api/runs");
 }
@@ -55,6 +66,11 @@ export function getTelemetry(id: string, stride = 3): Promise<TelemetrySeries> {
 
 export function getRunAlarms(id: string): Promise<AlarmSummary[]> {
   return request<AlarmSummary[]>(`/api/runs/${encodeURIComponent(id)}/alarms`);
+}
+
+export function getReportStudioPacket(id: string, sections?: ReportStudioSectionId[]): Promise<ReportStudioPacket> {
+  const query = sections?.length ? `?sections=${encodeURIComponent(sections.join(","))}` : "";
+  return request<ReportStudioPacket>(`/api/runs/${encodeURIComponent(id)}/report-studio${query}`);
 }
 
 export function validateScenario(scenarioId: string): Promise<ScenarioValidation> {
@@ -98,6 +114,10 @@ export function getJobs(): Promise<JobSummary[]> {
 
 export function getJob(id: string): Promise<JobSummary> {
   return request<JobSummary>(`/api/jobs/${encodeURIComponent(id)}`);
+}
+
+export function getJobProgress(id: string): Promise<LiveProgressState> {
+  return request<LiveProgressState>(`/api/jobs/${encodeURIComponent(id)}/progress`);
 }
 
 export function jobEventsUrl(id: string): string {

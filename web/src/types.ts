@@ -39,6 +39,15 @@ export type ScenarioBuilderWarning = {
   message: string;
 };
 
+export type ScenarioAdvisory = {
+  code: string;
+  severity: "info" | "warning" | "error" | "caution" | "critical" | string;
+  path: string;
+  message: string;
+  suggestion?: string | null;
+  resolved_reference?: string | null;
+};
+
 export type ScenarioValidation = {
   valid: boolean;
   errors?: string[];
@@ -48,6 +57,7 @@ export type ScenarioValidation = {
   integrator?: string;
   summary?: Record<string, unknown>;
   warnings?: Array<string | ScenarioBuilderWarning>;
+  advisories?: ScenarioAdvisory[];
   explanation?: string;
   recommendations?: string[];
   [key: string]: unknown;
@@ -106,6 +116,20 @@ export type JobSummary = {
   finished_at_utc: string | null;
   events: JobEvent[];
   result: ActionResult | null;
+};
+
+export type StorageStatus = {
+  ok: boolean;
+  backend: string;
+  root: string;
+  env_var: string;
+  env_backed: boolean;
+  persistent: boolean;
+  writable: boolean;
+  namespaces: string[];
+  manifest_exists: boolean;
+  error?: string | null;
+  [key: string]: unknown;
 };
 
 export type TelemetryRow = Record<string, number | string | null>;

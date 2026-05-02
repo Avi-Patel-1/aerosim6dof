@@ -2286,6 +2286,15 @@ textarea {
   line-height: 1.45;
 }
 
+.stacked-surface {
+  display: grid;
+  gap: 28px;
+}
+
+.compact-tool-grid {
+  opacity: 0.94;
+}
+
 /* Reports */
 .reports-layout {
   grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
@@ -2293,6 +2302,150 @@ textarea {
 
 .report-panel:first-child {
   grid-row: span 2;
+}
+
+.report-studio-panel {
+  min-width: 0;
+}
+
+.report-studio {
+  display: grid;
+  gap: 18px;
+}
+
+.report-studio-header,
+.report-studio-actions,
+.report-studio-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.report-studio-header span,
+.report-studio-card span,
+.report-studio-preview-head span {
+  color: var(--color-silver);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-studio-header h2 {
+  margin: 4px 0 0;
+  color: var(--color-starlight);
+  font-family: var(--font-arcadiadisplay);
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  font-weight: 360;
+}
+
+.report-studio-actions {
+  justify-content: flex-end;
+}
+
+.report-studio-actions button,
+.report-studio-actions select {
+  min-height: 42px;
+}
+
+.report-studio-grid {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.55fr) minmax(280px, 0.75fr) minmax(260px, 0.7fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.report-studio-section-picker,
+.report-studio-preview,
+.report-studio-payload {
+  min-width: 0;
+  border: 1px solid rgba(112, 112, 125, 0.34);
+  border-radius: 8px;
+  background: rgba(23, 23, 33, 0.38);
+  padding: 14px;
+}
+
+.report-studio-section-picker,
+.report-studio-section-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.report-studio-section {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 18px;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  width: 100%;
+  border: 1px solid rgba(112, 112, 125, 0.34);
+  border-radius: 6px;
+  color: var(--color-silver);
+  background: rgba(205, 221, 255, 0.05);
+  padding: 10px;
+  text-align: left;
+}
+
+.report-studio-section.selected {
+  border-color: rgba(205, 221, 255, 0.46);
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.12);
+}
+
+.report-studio-section strong,
+.report-studio-card strong {
+  display: block;
+  color: var(--color-starlight);
+  font-weight: 500;
+}
+
+.report-studio-section small {
+  display: block;
+  color: var(--color-silver);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.report-studio-card {
+  display: grid;
+  gap: 10px;
+  border-bottom: 1px solid rgba(112, 112, 125, 0.34);
+  padding-bottom: 12px;
+}
+
+.report-studio-card.muted {
+  opacity: 0.62;
+}
+
+.report-studio-card p {
+  margin: 0;
+  color: var(--color-silver);
+  font-size: 0.86rem;
+  line-height: 1.48;
+}
+
+.report-studio-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.report-studio-card dt {
+  color: var(--color-silver);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.report-studio-card dd {
+  margin: 2px 0 0;
+  color: var(--color-starlight);
+  overflow-wrap: anywhere;
+}
+
+.report-studio-payload pre {
+  max-height: 360px;
 }
 
 .result-head {
@@ -2423,6 +2576,7 @@ pre {
   .editor-layout,
   .scenario-builder-v2-layout,
   .reports-layout,
+  .report-studio-grid,
   .telemetry-ops-runbar,
   .operations-telemetry-grid {
     grid-template-columns: 1fr;
