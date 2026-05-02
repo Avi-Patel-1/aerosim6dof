@@ -50,7 +50,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 | **Campaigns** | Runs batches, Monte Carlo dispersions, parameter sweeps, and fault campaigns. |
 | **Engineering** | Runs trim, trim sweeps, linearization, stability analysis, and linear-model reports. |
 | **Models** | Inspects vehicle configs, compares vehicles, generates scenario templates, and creates aero, propulsion, and environment reports. |
-| **Editor** | Edits scenario drafts through guided fields or raw JSON, validates them, saves drafts, and runs drafts without changing packaged examples. |
+| **Editor** | Opens Scenario Builder v2: mission profile, vehicle, environment, initial state, GNC, sensors, faults, targets/interceptors, termination, outputs, and expert JSON in one guarded mission-design tool. |
 | **Reports** | Collects latest results, generated HTML reports, SVG plots, CSV/JSON artifacts, available capabilities, and background job status. |
 
 ### Practical Workflows
@@ -62,7 +62,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 - **Model inspection:** use **Models** to review vehicle, aerodynamic, propulsion, and environment assumptions before trusting a run.
 - **Intercept studies:** use **Editor** to add primary and decoy targets plus interceptor definitions, then replay target labels, miss-distance markers, interceptor geometry, and engagement reports.
 - **Operations telemetry review:** use **Telemetry** to answer what happened by subsystem, pin important parameters, compare against another run, inspect current/min/max values, and export selected channels for offline review.
-- **New scenario drafting:** use **Editor** to start from a packaged scenario, adjust duration, initial state, vehicle, environment, guidance, sensors, target/interceptor objects, and event limits, then validate and run the draft.
+- **New scenario drafting:** use **Editor** to start from a packaged scenario or preset, adjust duration, initial state, vehicle, environment, guidance, sensors, sensor-fault timelines, target/interceptor objects, outputs, and event limits, then validate and run the draft.
 
 ## Quick Start
 
@@ -124,7 +124,7 @@ The web interface provides a full simulator workbench around the existing Python
 - Dedicated operations telemetry console with subsystem panels, parameter search, pinned channels, min/max/current values, cursor-linked multi-axis charts, compare traces, selected-channel export, and local saved layouts
 - Scenario validation, run creation, batch, Monte Carlo, sweep, fault-campaign, trim, linearization, stability, model inspection, and report workflows
 - Engagement reports for target/interceptor runs
-- Guarded scenario editor with guided mission, target, interceptor, and raw JSON editing
+- Scenario Builder v2 with guided mission profile, vehicle, environment, initial state, GNC, sensors, faults, targets/interceptors, termination, outputs, validation advisories, an explanation summary, presets, and raw JSON expert mode
 
 Install the optional web dependencies:
 

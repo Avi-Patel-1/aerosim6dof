@@ -25,6 +25,12 @@ from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, in
 from aerosim6dof.analysis.environment import environment_report
 from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
+from aerosim6dof.analysis.scenario_builder import (
+    scenario_builder_explanation,
+    scenario_builder_recommendations,
+    scenario_builder_summary,
+    scenario_builder_warnings,
+)
 from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
 from aerosim6dof.config import deep_merge, load_json, load_with_optional_base
@@ -216,21 +222,26 @@ def list_capabilities() -> list[dict[str, Any]]:
 
 @router.post("/validate")
 def validate_scenario(payload: ValidateRequest) -> dict[str, Any]:
+    raw_config: dict[str, Any] = {}
     try:
         if payload.scenario_id:
-            scenario = Scenario.from_file(_scenario_path(payload.scenario_id))
+            path = _scenario_path(payload.scenario_id)
+            raw_config = load_json(path)
+            scenario = Scenario.from_file(path)
         elif payload.scenario is not None:
+            raw_config = payload.scenario
             scenario = _scenario_from_payload(payload.scenario)
         else:
             raise HTTPException(status_code=400, detail="scenario_id or scenario is required")
     except ValueError as exc:
-        return {"valid": False, "errors": [str(exc)]}
+        return {"valid": False, "errors": [str(exc)], **_scenario_builder_advisory(raw_config)}
     return {
         "valid": True,
         "scenario": scenario.name,
         "dt": scenario.dt,
         "duration": scenario.duration,
         "integrator": scenario.integrator,
+        **_scenario_builder_advisory(raw_config),
     }
 
 
@@ -351,6 +362,21 @@ def get_artifact(run_id: str, artifact_path: str) -> FileResponse:
     if not _is_within(target, output_dir.resolve()) or not target.is_file():
         raise HTTPException(status_code=404, detail="artifact not found")
     return FileResponse(target)
+
+
+def _scenario_builder_advisory(config: dict[str, Any]) -> dict[str, Any]:
+    """Return optional scenario-builder guidance without blocking validation."""
+    if not isinstance(config, dict):
+        config = {}
+    try:
+        return {
+            "summary": _safe_json(scenario_builder_summary(config)),
+            "warnings": _safe_json(scenario_builder_warnings(config)),
+            "explanation": scenario_builder_explanation(config),
+            "recommendations": scenario_builder_recommendations(config),
+        }
+    except Exception:  # pragma: no cover - advisory data must not break validation
+        return {"summary": {}, "warnings": [], "explanation": "", "recommendations": []}
 
 
 def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:

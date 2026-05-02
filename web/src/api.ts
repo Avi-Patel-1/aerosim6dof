@@ -1,4 +1,4 @@
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, TelemetrySeries } from "./types";
+import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, ScenarioValidation, TelemetrySeries } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -57,14 +57,14 @@ export function getRunAlarms(id: string): Promise<AlarmSummary[]> {
   return request<AlarmSummary[]>(`/api/runs/${encodeURIComponent(id)}/alarms`);
 }
 
-export function validateScenario(scenarioId: string): Promise<{ valid: boolean; errors?: string[] }> {
+export function validateScenario(scenarioId: string): Promise<ScenarioValidation> {
   return request("/api/validate", {
     method: "POST",
     body: JSON.stringify({ scenario_id: scenarioId })
   });
 }
 
-export function validateScenarioJson(scenario: Record<string, unknown>): Promise<{ valid: boolean; errors?: string[]; scenario?: string; dt?: number; duration?: number }> {
+export function validateScenarioJson(scenario: Record<string, unknown>): Promise<ScenarioValidation> {
   return request("/api/validate", {
     method: "POST",
     body: JSON.stringify({ scenario })

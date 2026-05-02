@@ -32,6 +32,27 @@ export type ScenarioDraft = {
   scenario: Record<string, unknown>;
 };
 
+export type ScenarioBuilderWarning = {
+  severity: "info" | "caution" | "warning" | "critical" | string;
+  section: string;
+  path: string;
+  message: string;
+};
+
+export type ScenarioValidation = {
+  valid: boolean;
+  errors?: string[];
+  scenario?: string;
+  dt?: number;
+  duration?: number;
+  integrator?: string;
+  summary?: Record<string, unknown>;
+  warnings?: Array<string | ScenarioBuilderWarning>;
+  explanation?: string;
+  recommendations?: string[];
+  [key: string]: unknown;
+};
+
 export type ConfigSummary = {
   id: string;
   name: string;
