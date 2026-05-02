@@ -89,6 +89,28 @@ export type JobSummary = {
 
 export type TelemetryRow = Record<string, number | string | null>;
 
+export type TelemetryRange = {
+  min: number | null;
+  max: number | null;
+  label: string;
+};
+
+export type TelemetryChannelMetadata = {
+  key: string;
+  display_name: string;
+  unit: string;
+  description: string;
+  group: string;
+  source: "history" | "truth" | "controls" | "sensors" | "derived";
+  role: "truth" | "sensor" | "command" | "actuator_state" | "environment" | "aero" | "gnc" | "propulsion" | "derived";
+  valid_range: TelemetryRange | null;
+  caution_range: TelemetryRange | null;
+  warning_range: TelemetryRange | null;
+  fatal_range: TelemetryRange | null;
+  sample_rate_hz: number | null;
+  derived: boolean;
+};
+
 export type TelemetrySeries = {
   run_id: string;
   stride: number;
@@ -98,6 +120,7 @@ export type TelemetrySeries = {
   truth: TelemetryRow[];
   controls: TelemetryRow[];
   sensors: TelemetryRow[];
+  metadata?: Record<string, TelemetryChannelMetadata>;
 };
 
 export type ReplayHandoff = {

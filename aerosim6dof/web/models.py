@@ -114,6 +114,28 @@ class RunSummary(BaseModel):
     artifacts: list[ArtifactRef] = Field(default_factory=list)
 
 
+class TelemetryRange(BaseModel):
+    min: float | None = None
+    max: float | None = None
+    label: str = ""
+
+
+class TelemetryChannelMetadata(BaseModel):
+    key: str
+    display_name: str
+    unit: str = ""
+    description: str = ""
+    group: str = "Unknown"
+    source: Literal["history", "truth", "controls", "sensors", "derived"] = "history"
+    role: Literal["truth", "sensor", "command", "actuator_state", "environment", "aero", "gnc", "propulsion", "derived"] = "truth"
+    valid_range: TelemetryRange | None = None
+    caution_range: TelemetryRange | None = None
+    warning_range: TelemetryRange | None = None
+    fatal_range: TelemetryRange | None = None
+    sample_rate_hz: float | None = None
+    derived: bool = False
+
+
 class TelemetrySeries(BaseModel):
     run_id: str
     stride: int
@@ -123,3 +145,4 @@ class TelemetrySeries(BaseModel):
     truth: list[dict[str, Any]] = Field(default_factory=list)
     controls: list[dict[str, Any]] = Field(default_factory=list)
     sensors: list[dict[str, Any]] = Field(default_factory=list)
+    metadata: dict[str, TelemetryChannelMetadata] = Field(default_factory=dict)

@@ -36,6 +36,11 @@ class WebApiTests(unittest.TestCase):
         payload = telemetry.json()
         self.assertGreater(payload["sample_count"], 0)
         self.assertIn("time_s", payload["channels"]["history"])
+        self.assertEqual(payload["metadata"]["altitude_m"]["display_name"], "Altitude")
+        self.assertEqual(payload["metadata"]["speed_mps"]["unit"], "m/s")
+        self.assertEqual(payload["metadata"]["qbar_pa"]["group"], "Aerodynamics")
+        self.assertEqual(payload["metadata"]["load_factor_g"]["role"], "aero")
+        self.assertEqual(payload["metadata"]["pitch_deg"]["group"], "Attitude")
 
     def test_validate_and_create_web_run(self):
         from aerosim6dof.web import api
@@ -147,6 +152,16 @@ class WebApiTests(unittest.TestCase):
     def test_artifact_paths_are_limited_to_run_directory(self):
         blocked = self.client.get("/api/artifacts/batch_after_damping~nominal_ascent/../summary.json")
         self.assertEqual(blocked.status_code, 404)
+
+    def test_telemetry_metadata_fallback_for_unknown_channels(self):
+        from aerosim6dof.telemetry.metadata import metadata_for_channels
+
+        metadata = metadata_for_channels({"history": ["custom_rate_mps"], "sensors": ["mystery_valid"]})
+        self.assertEqual(metadata["custom_rate_mps"]["display_name"], "Custom Rate")
+        self.assertEqual(metadata["custom_rate_mps"]["unit"], "m/s")
+        self.assertEqual(metadata["custom_rate_mps"]["group"], "Unknown")
+        self.assertEqual(metadata["mystery_valid"]["source"], "sensors")
+        self.assertEqual(metadata["mystery_valid"]["role"], "sensor")
 
 
 if __name__ == "__main__":

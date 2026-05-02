@@ -1,10 +1,12 @@
-import type { TelemetryRow } from "../types";
+import { channelLabelWithUnit } from "../telemetry";
+import type { TelemetryChannelMetadata, TelemetryRange, TelemetryRow } from "../types";
 
 type TelemetryChartProps = {
   title: string;
   rows: TelemetryRow[];
   channels: string[];
   currentIndex: number;
+  metadata?: Record<string, TelemetryChannelMetadata>;
 };
 
 const COLORS = ["#ededf3", "#cdddff", "#c3c3cc", "#9aa0b8", "#70707d", "#b7bed8"];
@@ -13,7 +15,27 @@ function asNumber(value: TelemetryRow[string]): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-export function TelemetryChart({ title, rows, channels, currentIndex }: TelemetryChartProps) {
+function rangeLines(metadata: TelemetryChannelMetadata | undefined): { value: number; className: string; label: string }[] {
+  if (!metadata) {
+    return [];
+  }
+  const collect = (range: TelemetryRange | null | undefined, className: string, fallback: string) => {
+    if (!range) {
+      return [];
+    }
+    const label = range.label || fallback;
+    return [range.min, range.max]
+      .filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+      .map((value) => ({ value, className, label }));
+  };
+  return [
+    ...collect(metadata.caution_range, "limit-line caution", "caution"),
+    ...collect(metadata.warning_range, "limit-line warning", "warning"),
+    ...collect(metadata.fatal_range, "limit-line fatal", "fatal")
+  ];
+}
+
+export function TelemetryChart({ title, rows, channels, currentIndex, metadata }: TelemetryChartProps) {
   const width = 720;
   const height = 178;
   const padding = { top: 18, right: 18, bottom: 24, left: 42 };
@@ -31,6 +53,7 @@ export function TelemetryChart({ title, rows, channels, currentIndex }: Telemetr
   const spanTime = maxTime - minTime || 1;
   const currentTime = asNumber(rows[currentIndex]?.time_s) ?? minTime;
   const currentX = padding.left + ((currentTime - minTime) / spanTime) * usableWidth;
+  const activeLimits = channels.length === 1 ? rangeLines(metadata?.[channels[0]]).filter((line) => line.value >= minValue && line.value <= maxValue) : [];
 
   const pointFor = (row: TelemetryRow, channel: string) => {
     const time = asNumber(row.time_s);
@@ -51,7 +74,7 @@ export function TelemetryChart({ title, rows, channels, currentIndex }: Telemetr
           {channels.map((channel, index) => (
             <span key={channel}>
               <i style={{ background: COLORS[index % COLORS.length] }} />
-              {channel.replaceAll("_", " ")}
+              {channelLabelWithUnit(metadata, channel)}
             </span>
           ))}
         </div>
@@ -63,6 +86,17 @@ export function TelemetryChart({ title, rows, channels, currentIndex }: Telemetr
         {[0.25, 0.5, 0.75].map((ratio) => {
           const y = padding.top + usableHeight * ratio;
           return <line key={ratio} x1={padding.left} y1={y} x2={width - padding.right} y2={y} className="grid-line" />;
+        })}
+        {activeLimits.map((line, index) => {
+          const y = padding.top + usableHeight - ((line.value - minValue) / spanValue) * usableHeight;
+          return (
+            <g key={`${line.className}-${line.value}-${index}`}>
+              <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} className={line.className} />
+              <text x={width - padding.right - 96} y={y - 4} className="limit-label">
+                {line.label}
+              </text>
+            </g>
+          );
         })}
         {channels.map((channel, index) => {
           const points = rows

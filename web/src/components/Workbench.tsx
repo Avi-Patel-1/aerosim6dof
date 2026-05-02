@@ -42,6 +42,8 @@ import {
   validateScenarioJson
 } from "../api";
 import type { ActionResult, Capability, ConfigSummary, JobSummary, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, TelemetryRow, TelemetrySeries } from "../types";
+import { channelLabel, channelLabelWithUnit } from "../telemetry";
+import { ParameterInfoPanel } from "./ParameterInfoPanel";
 import { ReplayScene } from "./ReplayScene";
 import { TelemetryChart } from "./TelemetryChart";
 
@@ -267,6 +269,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [playing, setPlaying] = useState(initialHandoff?.playing ?? false);
   const [chartMode, setChartMode] = useState<ChartMode>("flight");
   const [channelSelections, setChannelSelections] = useState<Record<ChartMode, string[]>>(DEFAULT_CHANNELS);
+  const [inspectedChannel, setInspectedChannel] = useState("");
   const [environmentMode, setEnvironmentMode] = useState<EnvironmentMode>(initialHandoff?.environmentMode ?? "range");
   const [cameraMode, setCameraMode] = useState<CameraMode>(initialHandoff?.cameraMode ?? "chase");
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -642,6 +645,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     if (!channel) {
       return;
     }
+    setInspectedChannel(channel);
     setChannelSelections((current) => {
       const existing = current[chartMode];
       if (existing.includes(channel)) {
@@ -653,10 +657,13 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
 
   const removeChartChannel = (channel: string) => {
     setChannelSelections((current) => ({ ...current, [chartMode]: current[chartMode].filter((item) => item !== channel) }));
+    setInspectedChannel((current) => (current === channel ? "" : current));
   };
 
   const final = summaryFinal(runDetail);
   const currentRow = telemetry?.history[currentIndex];
+  const chartRow = chartRows[Math.min(currentIndex, Math.max(chartRows.length - 1, 0))];
+  const activeParameterKey = chartChannels.includes(inspectedChannel) ? inspectedChannel : chartChannels[0];
   const reportArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "report" || artifact.kind === "plot").slice(0, 8) ?? [];
   const dataArtifacts = runDetail?.artifacts.filter((artifact) => artifact.kind === "csv" || artifact.kind === "json").slice(0, 8) ?? [];
   const latestResult = results[0];
@@ -880,7 +887,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                     <option value="">add channel</option>
                     {availableChartChannels.map((channel) => (
                       <option key={channel} value={channel}>
-                        {channel}
+                        {channelLabelWithUnit(telemetry?.metadata, channel)}
                       </option>
                     ))}
                   </select>
@@ -888,12 +895,18 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
               </div>
               <div className="channel-strip">
                 {chartChannels.map((channel) => (
-                  <button key={channel} onClick={() => removeChartChannel(channel)}>
-                    {channel.replaceAll("_", " ")}
-                  </button>
+                  <span key={channel} className={`channel-chip ${activeParameterKey === channel ? "active" : ""}`}>
+                    <button type="button" onClick={() => setInspectedChannel(channel)}>
+                      {channelLabel(telemetry?.metadata, channel)}
+                    </button>
+                    <button type="button" aria-label={`Remove ${channel}`} onClick={() => removeChartChannel(channel)}>
+                      x
+                    </button>
+                  </span>
                 ))}
               </div>
-              <TelemetryChart title={chartMode} rows={chartRows} channels={chartChannels} currentIndex={currentIndex} />
+              <ParameterInfoPanel channel={activeParameterKey} row={chartRow} metadata={telemetry?.metadata} />
+              <TelemetryChart title={chartMode} rows={chartRows} channels={chartChannels} currentIndex={currentIndex} metadata={telemetry?.metadata} />
             </section>
           </div>
         )}

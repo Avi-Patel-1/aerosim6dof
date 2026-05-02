@@ -34,6 +34,7 @@ from aerosim6dof.scenario import Scenario
 from aerosim6dof.simulation.campaign import run_sweep_campaign
 from aerosim6dof.simulation.fault_campaign import FAULT_LIBRARY, run_fault_campaign
 from aerosim6dof.simulation.runner import batch_run, linearize_scenario, monte_carlo_run, report_run, run_scenario
+from aerosim6dof.telemetry.metadata import metadata_for_channels
 
 from .models import (
     ActionRequest,
@@ -317,7 +318,7 @@ def get_telemetry(run_id: str, stride: int = Query(1, ge=1, le=5000)) -> Telemet
         sample_count = max(sample_count, len(rows))
         datasets[name] = rows[::stride]
         channels[name] = list(rows[0].keys()) if rows else []
-    return TelemetrySeries(run_id=run_id, stride=stride, sample_count=sample_count, channels=channels, **datasets)
+    return TelemetrySeries(run_id=run_id, stride=stride, sample_count=sample_count, channels=channels, metadata=metadata_for_channels(channels), **datasets)
 
 
 @router.get("/artifacts/{run_id}/{artifact_path:path}")
