@@ -1,7 +1,22 @@
 import type { ExamplesGalleryCard } from "./examplesGallery";
 import type { LiveProgressState } from "./liveProgress";
 import type { ReportStudioPacket, ReportStudioSectionId } from "./reportStudio";
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, NavigationTelemetry, RunSummary, ScenarioDetail, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetrySeries } from "./types";
+import type {
+  ActionResult,
+  AlarmSummary,
+  Capability,
+  ConfigSummary,
+  JobSummary,
+  MissileEngagementComparisonPacket,
+  NavigationTelemetry,
+  RunSummary,
+  ScenarioDetail,
+  ScenarioDraft,
+  ScenarioSummary,
+  ScenarioValidation,
+  StorageStatus,
+  TelemetrySeries
+} from "./types";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -92,6 +107,16 @@ export function getRunNavigation(id: string, stride = 3): Promise<NavigationTele
 export function getReportStudioPacket(id: string, sections?: ReportStudioSectionId[]): Promise<ReportStudioPacket> {
   const query = sections?.length ? `?sections=${encodeURIComponent(sections.join(","))}` : "";
   return request<ReportStudioPacket>(`/api/runs/${encodeURIComponent(id)}/report-studio${query}`);
+}
+
+export function getMissileEngagementComparison(maxRuns = 4, maxSamples = 260, runIds?: string[]): Promise<MissileEngagementComparisonPacket> {
+  const params = new URLSearchParams();
+  params.set("max_runs", String(maxRuns));
+  params.set("max_samples", String(maxSamples));
+  if (runIds?.length) {
+    params.set("run_ids", runIds.join(","));
+  }
+  return request<MissileEngagementComparisonPacket>(`/api/missile-engagement-comparison?${params.toString()}`);
 }
 
 export function validateScenario(scenarioId: string): Promise<ScenarioValidation> {

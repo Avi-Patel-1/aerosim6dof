@@ -36,6 +36,7 @@ import {
   getExamplesGallery,
   getJob,
   getJobs,
+  getMissileEngagementComparison,
   getRunNavigation,
   getReportStudioPacket,
   getRun,
@@ -52,7 +53,23 @@ import {
   validateScenario,
   validateScenarioJson
 } from "../api";
-import type { ActionResult, AlarmSummary, Capability, ConfigSummary, JobSummary, NavigationTelemetry, ReplayHandoff, RunSummary, ScenarioDraft, ScenarioSummary, ScenarioValidation, StorageStatus, TelemetryRow, TelemetrySeries } from "../types";
+import type {
+  ActionResult,
+  AlarmSummary,
+  Capability,
+  ConfigSummary,
+  JobSummary,
+  MissileEngagementComparisonPacket,
+  NavigationTelemetry,
+  ReplayHandoff,
+  RunSummary,
+  ScenarioDraft,
+  ScenarioSummary,
+  ScenarioValidation,
+  StorageStatus,
+  TelemetryRow,
+  TelemetrySeries
+} from "../types";
 import type { ExamplesGalleryCard } from "../examplesGallery";
 import type { ReportStudioExportPayload, ReportStudioExportRequest, ReportStudioPacket } from "../reportStudio";
 import { activeAlarmCount } from "../alarms";
@@ -62,6 +79,7 @@ import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
 import { CampaignDesigner } from "./CampaignDesigner";
 import { ExamplesGallery } from "./ExamplesGallery";
 import { LiveProgressPanel } from "./LiveProgressPanel";
+import { MissileEngagementAnalysis } from "./MissileEngagementAnalysis";
 import { OperationsTelemetryPanel } from "./OperationsTelemetryPanel";
 import { ParameterInfoPanel } from "./ParameterInfoPanel";
 import { ReplayScene } from "./ReplayScene";
@@ -70,7 +88,7 @@ import { ReportStudio } from "./ReportStudio";
 import { ScenarioBuilderV2 } from "./ScenarioBuilderV2";
 import { TelemetryChart } from "./TelemetryChart";
 
-type TabId = "replay" | "telemetry" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
+type TabId = "replay" | "telemetry" | "engagement" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
 type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
 type CameraMode = "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
@@ -79,6 +97,7 @@ type TrailColorMode = "plain" | "speed" | "qbar" | "load" | "altitude";
 const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "replay", label: "Replay", title: "Replay the vehicle in full flight context.", subtitle: "Scrub attitude, trajectory, events, and sampled telemetry from the selected output run." },
   { id: "telemetry", label: "Telemetry", title: "Answer what happened, when, and why.", subtitle: "Search, pin, compare, export, and inspect subsystem telemetry like a mission operations console." },
+  { id: "engagement", label: "Engagement", title: "Review terminal missile engagement behavior.", subtitle: "Compare seeker lock, range closure, motor phase, actuator saturation, fuze state, and closest approach." },
   { id: "launch", label: "Launch", title: "Run, validate, compare, and report.", subtitle: "Execute scenarios through the existing Python engine and keep generated outputs under web runs." },
   { id: "campaigns", label: "Campaigns", title: "Batch the uncertainty space.", subtitle: "Monte Carlo, parameter sweeps, fault campaigns, and batch workflows are available from one console." },
   { id: "engineering", label: "Engineering", title: "Trim, linearize, and inspect stability.", subtitle: "Use the simulator's engineering analysis commands without leaving the browser." },
@@ -269,6 +288,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [activeJob, setActiveJob] = useState<JobSummary | null>(null);
   const [jobHistory, setJobHistory] = useState<JobSummary[]>([]);
   const [reportPacket, setReportPacket] = useState<ReportStudioPacket | null>(null);
+  const [missileComparison, setMissileComparison] = useState<MissileEngagementComparisonPacket | null>(null);
+  const [missileComparisonLoading, setMissileComparisonLoading] = useState(false);
+  const [missileComparisonError, setMissileComparisonError] = useState("");
+  const [pendingEngagementJump, setPendingEngagementJump] = useState<{ runId: string; timeS: number } | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<ActionResult[]>([]);
@@ -449,6 +472,35 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   }, [activeTab, selectedRunId]);
 
   useEffect(() => {
+    if (activeTab !== "engagement") {
+      return;
+    }
+    let mounted = true;
+    setMissileComparisonLoading(true);
+    setMissileComparisonError("");
+    getMissileEngagementComparison(4, 260)
+      .then((packet) => {
+        if (mounted) {
+          setMissileComparison(packet);
+        }
+      })
+      .catch((error: Error) => {
+        if (mounted) {
+          setMissileComparison(null);
+          setMissileComparisonError(error.message);
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setMissileComparisonLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!compareRunId || compareRunId === selectedRunId) {
       setCompareTelemetry(null);
       return;
@@ -469,6 +521,33 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       mounted = false;
     };
   }, [compareRunId, selectedRunId]);
+
+  useEffect(() => {
+    if (!pendingEngagementJump || selectedRunId !== pendingEngagementJump.runId || telemetry?.run_id !== pendingEngagementJump.runId) {
+      return;
+    }
+    const rows = telemetry.history;
+    if (!rows.length || !Number.isFinite(pendingEngagementJump.timeS)) {
+      setPendingEngagementJump(null);
+      return;
+    }
+    let nearestIndex = 0;
+    let nearestDelta = Number.POSITIVE_INFINITY;
+    rows.forEach((row, index) => {
+      const value = numeric(row.time_s);
+      if (value === null) {
+        return;
+      }
+      const delta = Math.abs(value - pendingEngagementJump.timeS);
+      if (delta < nearestDelta) {
+        nearestDelta = delta;
+        nearestIndex = index;
+      }
+    });
+    setPlaying(false);
+    setCurrentIndex(nearestIndex);
+    setPendingEngagementJump(null);
+  }, [pendingEngagementJump, selectedRunId, telemetry]);
 
   useEffect(() => {
     if (!playing || !telemetry?.history.length) {
@@ -828,6 +907,19 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     setCurrentIndex(nearestIndex);
   };
 
+  const jumpToEngagementTime = (runId: string, timeS: number) => {
+    if (!runId || !Number.isFinite(timeS)) {
+      return;
+    }
+    setPendingEngagementJump({ runId, timeS });
+    if (runId !== selectedRunId) {
+      setSelectedRunId(runId);
+    } else {
+      jumpToTelemetryTime(timeS);
+      setPendingEngagementJump(null);
+    }
+  };
+
   const adjustReplayScale = (delta: number) => {
     setReplayScale((value) => Number(clamp(value + delta, REPLAY_SCALE_MIN, REPLAY_SCALE_MAX).toFixed(2)));
   };
@@ -1168,6 +1260,28 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
               compareRunLabel={compareRunLabel}
               alarms={alarms}
               events={runDetail?.events}
+            />
+          </div>
+        )}
+
+        {activeTab === "engagement" && (
+          <div className="engagement-shell">
+            <section className="telemetry-ops-runbar">
+              <SelectField label="Run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
+              <SelectField label="Compare" value={compareRunId} onChange={setCompareRunId} options={runOptions.filter((run) => run.id !== selectedRunId)} />
+              <div className="telemetry-ops-runmeta">
+                <span>{runDetail?.scenario ?? "no selected run"}</span>
+                <strong>{telemetry?.sample_count ?? 0} samples</strong>
+                <span>{compareTelemetry ? `compare: ${compareRunLabel}` : "comparison optional"}</span>
+              </div>
+            </section>
+            <MissileEngagementAnalysis
+              packet={missileComparison}
+              loading={missileComparisonLoading}
+              error={missileComparisonError}
+              selectedRunId={selectedRunId}
+              onSelectRun={setSelectedRunId}
+              onJumpTime={jumpToEngagementTime}
             />
           </div>
         )}

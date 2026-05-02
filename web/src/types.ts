@@ -200,6 +200,142 @@ export type TelemetrySeries = {
   metadata?: Record<string, TelemetryChannelMetadata>;
 };
 
+export type MissileMetric = {
+  value: number | null;
+  time_s?: number | null;
+  source?: string;
+};
+
+export type MissileTimelineSample = {
+  time_s: number | null;
+  locked?: boolean;
+  status?: string;
+  seeker_locked?: boolean;
+  seeker_status?: string;
+  range_m?: number | null;
+  range_rate_mps?: number | null;
+  closing_speed_mps?: number | null;
+  phase?: string;
+  motor_phase?: string;
+  thrust_n?: number | null;
+  motor_thrust_n?: number | null;
+  spool_fraction?: number | null;
+  motor_spool_fraction?: number | null;
+  lateral_accel_mps2?: number | null;
+  saturated?: boolean;
+  control_saturated?: boolean;
+  armed?: boolean;
+  fuze_armed?: boolean;
+  fuzed?: boolean;
+  fuze_fuzed?: boolean;
+  closest_range_m?: number | null;
+  fuze_status?: string;
+  fuze_closest_range_m?: number | null;
+  miss_distance_m?: number | null;
+};
+
+export type MissilePhaseInterval = {
+  value?: string;
+  phase?: string;
+  start_time_s: number | null;
+  end_time_s?: number | null;
+};
+
+export type MissileClosestApproachEvent = {
+  time_s: number | null;
+  type: string;
+  target_id?: string;
+  interceptor_id?: string;
+  miss_distance_m?: number | null;
+  description?: string;
+};
+
+export type MissileEngagementRun = {
+  id: string;
+  scenario: string;
+  run_dir: string;
+  available: boolean;
+  sample_count: number;
+  summary: {
+    miss_distance_m?: MissileMetric;
+    closest_approach_time_s?: number | null;
+    first_seeker_lock_time_s?: number | null;
+    seeker_lock_fraction?: number | null;
+    first_fuze_time_s?: number | null;
+    max_lateral_accel_mps2?: number | null;
+    max_closing_speed_mps?: number | null;
+    actuator_saturation_count?: number;
+    actuator_saturation_fraction?: number | null;
+    motor_phases?: string[];
+    fuze_states?: string[];
+    interceptor_id?: string | null;
+    target_id?: string | null;
+    [key: string]: unknown;
+  };
+  seeker_lock: {
+    ever_locked: boolean;
+    first_lock_time_s: number | null;
+    lock_fraction?: number | null;
+    locked_sample_count?: number;
+    timeline: MissileTimelineSample[];
+  };
+  range: {
+    min_range_m?: number | null;
+    timeline: MissileTimelineSample[];
+  };
+  motor: {
+    phase_sequence: MissilePhaseInterval[];
+    phase_intervals?: MissilePhaseInterval[];
+    timeline: MissileTimelineSample[];
+  };
+  lateral_acceleration: {
+    max_abs_mps2: number | null;
+    timeline: MissileTimelineSample[];
+  };
+  actuator_saturation: {
+    count: number;
+    fraction?: number | null;
+    first_time_s: number | null;
+    events: Array<Record<string, unknown>>;
+    timeline: MissileTimelineSample[];
+  };
+  fuze: {
+    first_armed_time_s: number | null;
+    first_fuzed_time_s: number | null;
+    state_intervals?: MissilePhaseInterval[];
+    timeline: MissileTimelineSample[];
+  };
+  miss_distance: MissileMetric;
+  closest_approach_timeline: {
+    event: MissileClosestApproachEvent | null;
+    samples: MissileTimelineSample[];
+  };
+};
+
+export type MissileEngagementComparisonRow = {
+  id: string;
+  scenario: string;
+  miss_distance_m: number | null;
+  closest_approach_time_s: number | null;
+  first_seeker_lock_time_s: number | null;
+  seeker_lock_fraction?: number | null;
+  first_fuze_time_s: number | null;
+  max_lateral_accel_mps2: number | null;
+  max_closing_speed_mps?: number | null;
+  actuator_saturation_count: number;
+  actuator_saturation_fraction?: number | null;
+  motor_phases: string[];
+  fuze_states: string[];
+};
+
+export type MissileEngagementComparisonPacket = {
+  schema: string;
+  run_count: number;
+  runs: MissileEngagementRun[];
+  comparison_table: MissileEngagementComparisonRow[];
+  timeline_channels: string[];
+};
+
 export type NavigationTelemetryChannel = {
   key: string;
   label: string;

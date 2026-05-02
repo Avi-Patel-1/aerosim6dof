@@ -1991,6 +1991,332 @@ textarea {
   border-color: rgba(237, 237, 243, 0.52);
 }
 
+/* Missile engagement analysis */
+.engagement-shell,
+.engagement-analysis {
+  display: grid;
+  gap: 24px;
+}
+
+.engagement-analysis {
+  border-top: 1px solid rgba(112, 112, 125, 0.5);
+  padding-top: 28px;
+}
+
+.engagement-analysis.loading {
+  min-height: 240px;
+  place-items: center;
+  color: var(--color-silver);
+}
+
+.engagement-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: end;
+}
+
+.engagement-hero h2 {
+  max-width: 780px;
+}
+
+.engagement-hero p:not(.eyebrow) {
+  max-width: 700px;
+  margin-top: 14px;
+}
+
+.engagement-hero-icons,
+.engagement-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.engagement-hero-icons span,
+.engagement-legend span,
+.engagement-state {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(112, 112, 125, 0.42);
+  border-radius: 40px;
+  color: var(--color-silver);
+  background: rgba(23, 23, 33, 0.42);
+  padding: 0 12px;
+  font-size: 0.8125rem;
+  text-transform: capitalize;
+}
+
+.engagement-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.engagement-run-grid,
+.engagement-lower-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.engagement-run-grid.showcase {
+  gap: 28px;
+}
+
+.engagement-run-card,
+.engagement-chart,
+.engagement-signal-panel,
+.engagement-timeline-panel {
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid rgba(112, 112, 125, 0.42);
+  padding-top: 20px;
+}
+
+.engagement-run-title,
+.engagement-section-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+
+.engagement-run-title h3,
+.engagement-section-head h3 {
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  overflow-wrap: anywhere;
+}
+
+.engagement-state.live {
+  color: var(--color-starlight);
+  border-color: rgba(205, 221, 255, 0.58);
+  background: rgba(205, 221, 255, 0.16);
+}
+
+.engagement-state.warn {
+  color: var(--color-starlight);
+  border-color: rgba(237, 237, 243, 0.54);
+}
+
+.engagement-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 20px;
+  border-top: 1px solid rgba(112, 112, 125, 0.32);
+}
+
+.engagement-metric-grid div {
+  min-height: 96px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border-bottom: 1px solid rgba(112, 112, 125, 0.28);
+  padding: 14px 0;
+}
+
+.engagement-metric-grid span,
+.engagement-metric-grid small,
+.engagement-signal-list span,
+.engagement-timeline small {
+  color: var(--color-silver);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+}
+
+.engagement-metric-grid span {
+  text-transform: uppercase;
+}
+
+.engagement-metric-grid strong {
+  min-width: 0;
+  color: var(--color-starlight);
+  font-family: var(--font-arcadiadisplay);
+  font-size: clamp(1.1rem, 1.55vw, 1.6rem);
+  font-weight: 360;
+  overflow-wrap: anywhere;
+  text-transform: capitalize;
+}
+
+.engagement-run-card.selected {
+  border-color: rgba(205, 221, 255, 0.64);
+}
+
+.engagement-open-run {
+  min-height: 36px;
+  border: 1px solid rgba(205, 221, 255, 0.22);
+  border-radius: 40px;
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.1);
+  padding: 0 14px;
+  text-transform: capitalize;
+}
+
+.engagement-open-run:hover {
+  border-color: rgba(205, 221, 255, 0.52);
+  background: rgba(205, 221, 255, 0.18);
+}
+
+.engagement-chart svg {
+  width: 100%;
+  height: auto;
+  min-height: 220px;
+  overflow: visible;
+}
+
+.engagement-chart-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.engagement-chart-shell .mini-segment {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.engagement-signal-list,
+.engagement-timeline {
+  display: grid;
+  gap: 10px;
+}
+
+.engagement-metric-grid.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.engagement-signal-list.compact {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid rgba(112, 112, 125, 0.26);
+  padding-top: 12px;
+}
+
+.engagement-signal-list div {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 20px minmax(120px, 0.55fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid rgba(112, 112, 125, 0.26);
+}
+
+.engagement-signal-list svg {
+  color: var(--color-ghost-blue);
+}
+
+.engagement-phase-table {
+  display: grid;
+  gap: 12px;
+}
+
+.engagement-phase-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.72fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  border-bottom: 1px solid rgba(112, 112, 125, 0.26);
+  padding: 12px 0;
+}
+
+.engagement-phase-row strong,
+.engagement-phase-row p {
+  min-width: 0;
+  color: var(--color-starlight);
+  overflow-wrap: anywhere;
+  text-transform: capitalize;
+}
+
+.engagement-phase-row span {
+  display: block;
+  color: var(--color-silver);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.engagement-phase-row p {
+  margin-top: 4px;
+  font-size: 0.9rem;
+}
+
+.engagement-signal-list strong {
+  min-width: 0;
+  color: var(--color-starlight);
+  font-weight: 480;
+  overflow-wrap: anywhere;
+  text-transform: capitalize;
+}
+
+.engagement-signal-list.compact strong {
+  font-size: 0.86rem;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.engagement-timeline button {
+  width: 100%;
+  min-height: 66px;
+  display: grid;
+  grid-template-columns: 34px 70px minmax(120px, 0.5fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(112, 112, 125, 0.28);
+  border-radius: 0;
+  color: var(--color-starlight);
+  background: rgba(23, 23, 33, 0.34);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.engagement-timeline button:hover {
+  border-color: rgba(205, 221, 255, 0.48);
+  background: rgba(205, 221, 255, 0.08);
+}
+
+.engagement-timeline button.lock {
+  border-color: rgba(205, 221, 255, 0.42);
+}
+
+.engagement-timeline button.warn {
+  border-color: rgba(237, 237, 243, 0.44);
+}
+
+.engagement-timeline button.terminal {
+  background: rgba(205, 221, 255, 0.12);
+}
+
+.engagement-timeline span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.14);
+  font-size: 0.76rem;
+}
+
+.engagement-timeline strong {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.78rem;
+  font-weight: 480;
+}
+
+.engagement-timeline em {
+  min-width: 0;
+  font-style: normal;
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+
+.engagement-timeline small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* Tools and forms */
 .tool-grid {
   display: grid;
@@ -2754,9 +3080,17 @@ pre {
   .scenario-builder-v2-layout,
   .reports-layout,
   .report-studio-grid,
+  .engagement-hero,
+  .engagement-run-grid,
+  .engagement-lower-grid,
   .telemetry-ops-runbar,
   .operations-telemetry-grid {
     grid-template-columns: 1fr;
+  }
+
+  .engagement-hero-icons,
+  .engagement-legend {
+    justify-content: flex-start;
   }
 
   .report-studio-panel {
@@ -3001,10 +3335,19 @@ pre {
   }
 
   .metric-grid,
+  .engagement-metric-grid,
+  .engagement-signal-list.compact,
   .parameter-grid,
   .readout-grid,
   .toggle-row {
     grid-template-columns: 1fr;
+  }
+
+  .engagement-phase-row,
+  .engagement-signal-list div,
+  .engagement-timeline button {
+    grid-template-columns: 1fr;
+    align-items: start;
   }
 
   .metric-grid div {

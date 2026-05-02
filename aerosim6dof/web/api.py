@@ -25,6 +25,7 @@ from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, in
 from aerosim6dof.analysis.environment import environment_report
 from aerosim6dof.analysis.engagement import engagement_report
 from aerosim6dof.analysis.examples_gallery import build_examples_gallery
+from aerosim6dof.analysis.missile_engagement_compare import build_missile_engagement_comparison, is_missile_showcase_run
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
 from aerosim6dof.analysis.scenario_validation import summarize_scenario_advisories, validate_scenario_advisories
 from aerosim6dof.analysis.scenario_builder import (
@@ -99,6 +100,7 @@ CAPABILITIES = [
     {"id": "sweep", "group": "campaign", "label": "Sweep"},
     {"id": "fault_campaign", "group": "campaign", "label": "Fault Campaign", "faults": sorted(FAULT_LIBRARY)},
     {"id": "compare_runs", "group": "analysis", "label": "Compare"},
+    {"id": "missile_engagement_comparison", "group": "analysis", "label": "Missile Engagement Comparison"},
     {"id": "report", "group": "analysis", "label": "Report"},
     {"id": "engagement_report", "group": "analysis", "label": "Engagement"},
     {"id": "sensor_report", "group": "analysis", "label": "Sensor Report"},
@@ -503,6 +505,24 @@ def get_report_studio_packet(run_id: str, sections: str | None = Query(default=N
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.get("/missile-engagement-comparison")
+def get_missile_engagement_comparison(
+    run_ids: str | None = Query(default=None),
+    max_runs: int = Query(default=4, ge=1, le=8),
+    max_samples: int = Query(default=240, ge=20, le=1000),
+) -> dict[str, Any]:
+    if run_ids:
+        ids = [item.strip() for item in run_ids.split(",") if item.strip()]
+        if not ids:
+            raise HTTPException(status_code=400, detail="run_ids must include at least one run id")
+        ids = ids[:max_runs]
+        run_dirs = [_run_dir_from_id(run_id) for run_id in ids]
+    else:
+        run_dirs = _discover_missile_showcase_run_dirs(max_runs=max_runs)
+        ids = [_run_id(path) for path in run_dirs]
+    return _safe_json(build_missile_engagement_comparison(run_dirs, run_ids=ids, max_samples=max_samples))
+
+
 @router.get("/artifacts/{run_id}/{artifact_path:path}")
 def get_artifact(run_id: str, artifact_path: str) -> FileResponse:
     output_dir = _output_dir_from_id(run_id)
@@ -590,6 +610,16 @@ def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:
         out = _action_dir("compare", f"{run_a.name}_vs_{run_b.name}")
         data = compare_histories(run_a / "history.csv", run_b / "history.csv", out)
         return _action_result(action, out, data)
+    if action == "missile_engagement_comparison":
+        raw_ids = params.get("run_ids")
+        if isinstance(raw_ids, list) and raw_ids:
+            ids = [str(item) for item in raw_ids][:8]
+            run_dirs = [_run_dir_from_id(run_id) for run_id in ids]
+        else:
+            run_dirs = _discover_missile_showcase_run_dirs(max_runs=4)
+            ids = [_run_id(path) for path in run_dirs]
+        data = build_missile_engagement_comparison(run_dirs, run_ids=ids, max_samples=max(20, min(int(params.get("max_samples", 240)), 1000)))
+        return ActionResult(action=action, data=_safe_json(data))
     if action == "report":
         run_dir = _run_dir_from_id(str(params["run_id"]))
         report_path = report_run(run_dir)
@@ -727,7 +757,16 @@ def _job_update(
 def _action_stage(action: str) -> str:
     if action in {"run", "batch", "monte_carlo", "sweep", "fault_campaign"}:
         return "running simulation"
-    if action in {"compare_runs", "report", "engagement_report", "sensor_report", "aero_report", "thrust_curve_report", "environment_report"}:
+    if action in {
+        "compare_runs",
+        "missile_engagement_comparison",
+        "report",
+        "engagement_report",
+        "sensor_report",
+        "aero_report",
+        "thrust_curve_report",
+        "environment_report",
+    }:
         return "building report"
     if action in {"trim", "trim_sweep", "linearize", "stability", "linear_model_report"}:
         return "solving engineering model"
@@ -857,6 +896,33 @@ def _find_run_dirs() -> list[Path]:
         if (run_dir / "history.csv").exists():
             run_dirs.append(run_dir)
     return run_dirs
+
+
+def _discover_missile_showcase_run_dirs(*, max_runs: int = 4) -> list[Path]:
+    preferred_order = {
+        "missile_head_on_showcase": 0,
+        "missile_crossing_showcase": 1,
+        "missile_tail_chase_showcase": 2,
+        "missile_intercept_demo": 3,
+    }
+    latest_by_scenario: dict[str, Path] = {}
+    for path in _discover_run_dirs():
+        if not is_missile_showcase_run(path):
+            continue
+        summary = _read_json(path / "summary.json")
+        scenario = str(summary.get("scenario", path.name))
+        key = scenario.lower()
+        previous = latest_by_scenario.get(key)
+        if previous is None or path.stat().st_mtime > previous.stat().st_mtime:
+            latest_by_scenario[key] = path
+    run_dirs = sorted(
+        latest_by_scenario.values(),
+        key=lambda path: (
+            preferred_order.get(str(_read_json(path / "summary.json").get("scenario", path.name)).lower(), 99),
+            str(_read_json(path / "summary.json").get("scenario", path.name)).lower(),
+        ),
+    )
+    return run_dirs[:max_runs]
 
 
 def _ensure_minimum_seed_run() -> None:
