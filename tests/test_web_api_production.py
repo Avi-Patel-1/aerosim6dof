@@ -128,7 +128,34 @@ class WebApiProductionContractTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["row_count"], 2)
         self.assertIn("estimate_altitude_m", {item["key"] for item in payload["channels"]})
         self.assertEqual(payload["metadata"]["estimate_altitude_m"]["display_name"], "Estimate Altitude")
+        self.assertEqual(payload["metadata"]["estimate_altitude_m"]["source"], "derived")
+        self.assertEqual(payload["metadata"]["estimate_altitude_m"]["role"], "estimate")
+        self.assertTrue(payload["metadata"]["estimate_altitude_m"]["derived"])
+        self.assertEqual(payload["metadata"]["gnss_quality"]["role"], "estimate")
+        self.assertEqual(payload["metadata"]["covariance_trace"]["role"], "estimate")
         self.assertIn("estimate_position_error_m", payload["rows"][0])
+
+    def test_corrupt_run_json_does_not_break_run_routes(self) -> None:
+        corrupt_dir = self.outputs_dir / "prod_runs" / "corrupt_json"
+        corrupt_dir.mkdir(parents=True)
+        (corrupt_dir / "summary.json").write_text("{ invalid", encoding="utf-8")
+        (corrupt_dir / "manifest.json").write_text("{ invalid", encoding="utf-8")
+        (corrupt_dir / "events.json").write_text("{ invalid", encoding="utf-8")
+        write_csv(
+            corrupt_dir / "history.csv",
+            [{"time_s": 0.0, "altitude_m": 10.0, "speed_mps": 5.0}],
+        )
+
+        runs = self.client.get("/api/runs")
+        self.assertEqual(runs.status_code, 200, runs.text)
+        run_ids = {item["id"] for item in runs.json()}
+        self.assertIn("prod_runs~corrupt_json", run_ids)
+
+        detail = self.client.get("/api/runs/prod_runs~corrupt_json")
+        self.assertEqual(detail.status_code, 200, detail.text)
+        payload = detail.json()
+        self.assertEqual(payload["scenario"], "corrupt_json")
+        self.assertEqual(payload["events"], [])
 
     def test_estimation_report_action_writes_fusion_artifacts(self) -> None:
         response = self.client.post("/api/actions/estimation_report", json={"params": {"run_id": self.run_id}})

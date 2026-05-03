@@ -177,7 +177,7 @@ export type TelemetryChannelMetadata = {
   description: string;
   group: string;
   source: "history" | "truth" | "controls" | "sensors" | "derived";
-  role: "truth" | "sensor" | "command" | "actuator_state" | "environment" | "aero" | "gnc" | "propulsion" | "derived";
+  role: "truth" | "sensor" | "command" | "actuator_state" | "environment" | "aero" | "gnc" | "propulsion" | "derived" | "estimate";
   valid_range: TelemetryRange | null;
   caution_range: TelemetryRange | null;
   warning_range: TelemetryRange | null;

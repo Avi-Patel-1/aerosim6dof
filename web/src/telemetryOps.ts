@@ -613,9 +613,6 @@ function comparisonRoleForChannel(channel: string, metadata?: TelemetryChannelMe
   const role = normalized(metadata?.role as string | undefined);
   const source = normalized(metadata?.source as string | undefined);
   const text = `${key} ${role} ${source} ${normalized(metadata?.description)} ${normalized(metadata?.group)}`;
-  if (role === "truth" || source === "truth" || /^truth_/.test(key) || /\btruth\b/.test(text)) {
-    return "truth";
-  }
   if (
     role === "sensor" ||
     source === "sensors" ||
@@ -631,6 +628,9 @@ function comparisonRoleForChannel(channel: string, metadata?: TelemetryChannelMe
     /\b(estimate|estimated|filter)\b/.test(text)
   ) {
     return "estimate";
+  }
+  if (role === "truth" || source === "truth" || /^truth_/.test(key) || /\btruth\b/.test(text)) {
+    return "truth";
   }
   if (source === "history" && /(^|_)(position|velocity|altitude|speed|roll|pitch|yaw|quat|rate|state)(_|$)/.test(key)) {
     return "truth";

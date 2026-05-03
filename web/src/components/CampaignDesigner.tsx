@@ -160,7 +160,7 @@ export function CampaignDesigner({
 
   return (
     <section className="scenario-builder-v2" aria-label="Mission campaign designer">
-      <div className="scenario-builder-v2-preset-bar" role="tablist" aria-label="Campaign type">
+      <div className="scenario-builder-v2-preset-bar" aria-label="Campaign type">
         {KIND_ORDER.map((kind) => (
           <button
             key={kind}

@@ -123,6 +123,14 @@ const REPLAY_SCALE_MAX = 1.04;
 const REPLAY_SCALE_STEP = 0.04;
 const DEFAULT_REPLAY_SCALE = 0.92;
 
+function tabPanelProps(id: TabId) {
+  return {
+    id: `${id}-tabpanel`,
+    role: "tabpanel",
+    "aria-labelledby": `${id}-tab`
+  } as const;
+}
+
 function numeric(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -613,7 +621,15 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       };
       source.onmessage = (event) => {
         streamed = true;
-        const job = JSON.parse(event.data) as JobSummary;
+        let job: JobSummary;
+        try {
+          job = JSON.parse(event.data) as JobSummary;
+        } catch {
+          finish(() => {
+            pollJob(jobId).then(resolve).catch(reject);
+          });
+          return;
+        }
         rememberJob(job);
         if (job.status === "completed") {
           finish(() => resolve(job));
@@ -986,9 +1002,18 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
             <h1>Flight Simulator</h1>
           </div>
         </div>
-        <nav className="tabs" aria-label="Workbench tabs">
+        <nav className="tabs" role="tablist" aria-label="Workbench tabs">
           {TABS.map((tab) => (
-            <button key={tab.id} className={activeTab === tab.id ? "active" : ""} onClick={() => setActiveTab(tab.id)}>
+            <button
+              key={tab.id}
+              id={`${tab.id}-tab`}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls={`${tab.id}-tabpanel`}
+              className={activeTab === tab.id ? "active" : ""}
+              onClick={() => setActiveTab(tab.id)}
+            >
               {tab.label}
             </button>
           ))}
@@ -1041,7 +1066,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         </section>
 
         {activeTab === "replay" && (
-          <div className="replay-layout">
+          <div className="replay-layout" {...tabPanelProps("replay")}>
             <section className={`replay-stage ${replayFullscreen ? "is-expanded" : ""}`} style={replayStageStyle}>
               <div className="stage-header">
                 <div>
@@ -1256,7 +1281,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "telemetry" && (
-          <div className="telemetry-ops-shell">
+          <div className="telemetry-ops-shell" {...tabPanelProps("telemetry")}>
             <section className="telemetry-ops-runbar">
               <SelectField label="Run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
               <SelectField label="Compare" value={compareRunId} onChange={setCompareRunId} options={runOptions.filter((run) => run.id !== selectedRunId)} />
@@ -1281,7 +1306,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "estimation" && (
-          <div className="stacked-surface">
+          <div className="stacked-surface" {...tabPanelProps("estimation")}>
             <EstimationPanel
               runs={runs}
               results={results}
@@ -1296,7 +1321,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "engagement" && (
-          <div className="engagement-shell">
+          <div className="engagement-shell" {...tabPanelProps("engagement")}>
             <section className="telemetry-ops-runbar">
               <SelectField label="Run" value={selectedRunId} onChange={setSelectedRunId} options={runOptions} />
               <SelectField label="Compare" value={compareRunId} onChange={setCompareRunId} options={runOptions.filter((run) => run.id !== selectedRunId)} />
@@ -1318,7 +1343,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "launch" && (
-          <div className="tool-grid">
+          <div className="tool-grid" {...tabPanelProps("launch")}>
             <ActionCard title="Scenario" icon={<Route size={18} />} running={busyAction === "run"} onRun={() => runTool("run", { scenario_id: selectedScenario }, "replay")}>
               <SelectField label="Scenario" value={selectedScenario} onChange={setSelectedScenario} options={scenarioOptions} />
               <button className="secondary-action" onClick={validateSelected} disabled={busyAction === "validate"}>
@@ -1352,7 +1377,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "campaigns" && (
-          <div className="stacked-surface">
+          <div className="stacked-surface" {...tabPanelProps("campaigns")}>
             <CampaignDesigner
               scenarios={scenarios}
               capabilities={capabilities}
@@ -1400,7 +1425,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "trade" && (
-          <div className="stacked-surface">
+          <div className="stacked-surface" {...tabPanelProps("trade")}>
             <TradeSpacePanel
               scenarios={scenarios}
               vehicles={vehicles}
@@ -1416,7 +1441,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "engineering" && (
-          <div className="tool-grid">
+          <div className="tool-grid" {...tabPanelProps("engineering")}>
             <ActionCard title="Trim" icon={<Gauge size={18} />} running={busyAction === "trim"} onRun={() => runTool("trim", { vehicle_id: selectedVehicle, speed_mps: 120, altitude_m: 1000 }, "reports")}>
               <SelectField label="Vehicle" value={selectedVehicle} onChange={setSelectedVehicle} options={vehicleOptions} />
             </ActionCard>
@@ -1461,7 +1486,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "models" && (
-          <div className="stacked-surface">
+          <div className="stacked-surface" {...tabPanelProps("models")}>
             <ExamplesGallery
               cards={examplesGallery}
               selectedId={selectedScenario}
@@ -1502,7 +1527,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "editor" && (
-          <div className="editor-shell">
+          <div className="editor-shell" {...tabPanelProps("editor")}>
             <section className="editor-panel scenario-builder-shell">
               <div className="editor-header">
                 <div className="section-title">
@@ -1544,7 +1569,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         )}
 
         {activeTab === "reports" && (
-          <div className="reports-layout">
+          <div className="reports-layout" {...tabPanelProps("reports")}>
             <section className="report-panel report-studio-panel">
               <div className="section-row">
                 <div className="section-title">
@@ -1614,7 +1639,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 ))}
               </div>
             </section>
-            <section className="report-panel">
+            <section className="report-panel integration-map-card">
               <IntegrationMapPanel />
             </section>
             <LiveProgressPanel jobs={jobHistory} onCancel={cancelActiveJob} onRetry={retryExistingJob} />

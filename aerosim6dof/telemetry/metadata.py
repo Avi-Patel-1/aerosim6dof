@@ -16,6 +16,7 @@ TelemetryRole = Literal[
     "gnc",
     "propulsion",
     "derived",
+    "estimate",
 ]
 
 
@@ -294,7 +295,7 @@ KNOWN_CHANNELS: dict[str, TelemetryChannelMetadata] = {
     "horizon_pitch_deg": _m("horizon_pitch_deg", "Horizon Pitch", "deg", "Horizon sensor pitch estimate.", "Sensors", "sensors", "sensor"),
 }
 
-_SOURCE_PRIORITY: tuple[TelemetrySource, ...] = ("controls", "sensors", "truth", "history")
+_SOURCE_PRIORITY: tuple[TelemetrySource, ...] = ("controls", "sensors", "truth", "derived", "history")
 
 
 def _detected_sources(channels: dict[str, list[str]]) -> dict[str, TelemetrySource]:
@@ -303,7 +304,7 @@ def _detected_sources(channels: dict[str, list[str]]) -> dict[str, TelemetrySour
         for key in channels.get(source, []):
             detected.setdefault(key, source)
     for source, keys in channels.items():
-        normalized_source = source if source in {"history", "truth", "controls", "sensors"} else "history"
+        normalized_source = source if source in {"history", "truth", "controls", "sensors", "derived"} else "history"
         for key in keys:
             detected.setdefault(key, normalized_source)  # type: ignore[arg-type]
     return detected
@@ -318,7 +319,7 @@ def _fallback_metadata(key: str, source: TelemetrySource) -> TelemetryChannelMet
         group="Unknown",
         source=source,
         role=_infer_role(source, key),
-        derived=False,
+        derived=source == "derived",
     )
 
 
@@ -362,6 +363,10 @@ def _infer_unit(key: str) -> str:
 
 
 def _infer_role(source: TelemetrySource, key: str) -> TelemetryRole:
+    if source == "derived":
+        if key.startswith("estimate_") or key in {"gnss_quality", "covariance_trace"} or "residual" in key:
+            return "estimate"
+        return "derived"
     if key.endswith("_command_deg") or key == "throttle":
         return "command"
     if "saturated" in key or "failed" in key or key.endswith("_deg"):

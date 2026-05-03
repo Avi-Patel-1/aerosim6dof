@@ -461,12 +461,12 @@ export function OperationsTelemetryPanel({
             </section>
           )}
 
-          <div className="operations-channel-list" role="listbox" aria-label={`${activeSubsystem} telemetry channels`}>
+          <div className="operations-channel-list" role="list" aria-label={`${activeSubsystem} telemetry channels`}>
             {visibleKeys.map((key) => {
               const selected = selectedChannels.includes(key);
               const pinned = pinnedChannels.includes(key);
               return (
-                <div key={key} className={`operations-channel-option ${selected ? "selected" : ""}`}>
+                <div key={key} className={`operations-channel-option ${selected ? "selected" : ""}`} role="listitem">
                   <button type="button" onClick={() => toggleChannel(key)} aria-pressed={selected}>
                     <strong>{channelLabelWithUnit(metadata, key)}</strong>
                     <span>{key}</span>
@@ -525,8 +525,12 @@ export function OperationsTelemetryPanel({
               </thead>
               <tbody>
                 {summaries.map((summary) => (
-                  <tr key={summary.key} className={selectedChannel === summary.key ? "active" : ""} onClick={() => setSelectedChannel(summary.key)}>
-                    <td>{channelLabelWithUnit(metadata, summary.key)}</td>
+                  <tr key={summary.key} className={selectedChannel === summary.key ? "active" : ""}>
+                    <td>
+                      <button type="button" className="table-link-button" onClick={() => setSelectedChannel(summary.key)}>
+                        {channelLabelWithUnit(metadata, summary.key)}
+                      </button>
+                    </td>
                     <td>{summary.current}</td>
                     <td>{summary.min}</td>
                     <td>{summary.max}</td>

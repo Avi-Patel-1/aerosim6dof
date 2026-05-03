@@ -966,17 +966,25 @@ def _discover_missile_showcase_run_dirs(*, max_runs: int = 4) -> list[Path]:
     for path in _discover_run_dirs():
         if not is_missile_showcase_run(path):
             continue
-        summary = _read_json(path / "summary.json")
+        summary = _read_json(path / "summary.json", fallback={})
+        if not isinstance(summary, dict):
+            summary = {}
         scenario = str(summary.get("scenario", path.name))
         key = scenario.lower()
         previous = latest_by_scenario.get(key)
         if previous is None or path.stat().st_mtime > previous.stat().st_mtime:
             latest_by_scenario[key] = path
+    def scenario_sort_key(path: Path) -> str:
+        summary = _read_json(path / "summary.json", fallback={})
+        if not isinstance(summary, dict):
+            return path.name
+        return str(summary.get("scenario", path.name))
+
     run_dirs = sorted(
         latest_by_scenario.values(),
         key=lambda path: (
-            preferred_order.get(str(_read_json(path / "summary.json").get("scenario", path.name)).lower(), 99),
-            str(_read_json(path / "summary.json").get("scenario", path.name)).lower(),
+            preferred_order.get(scenario_sort_key(path).lower(), 99),
+            scenario_sort_key(path).lower(),
         ),
     )
     return run_dirs[:max_runs]
@@ -1053,9 +1061,13 @@ def _build_run_summary(run_dir: Path) -> RunSummary:
     run_dir = run_dir.resolve()
     if not _is_within(run_dir, OUTPUTS_DIR.resolve()) or not (run_dir / "summary.json").exists():
         raise HTTPException(status_code=404, detail="run not found")
-    summary = _read_json(run_dir / "summary.json")
-    manifest = _read_json(run_dir / "manifest.json") if (run_dir / "manifest.json").exists() else None
-    events = _read_json(run_dir / "events.json") if (run_dir / "events.json").exists() else []
+    summary = _read_json(run_dir / "summary.json", fallback={})
+    if not isinstance(summary, dict):
+        summary = {}
+    manifest = _read_json(run_dir / "manifest.json", fallback=None) if (run_dir / "manifest.json").exists() else None
+    if manifest is not None and not isinstance(manifest, dict):
+        manifest = None
+    events = _read_json(run_dir / "events.json", fallback=[]) if (run_dir / "events.json").exists() else []
     if not isinstance(events, list):
         events = []
     run_id = _run_id(run_dir)
@@ -1203,8 +1215,11 @@ def _float_list(value: Any) -> list[float]:
     return [float(part.strip()) for part in str(value).split(",") if part.strip()]
 
 
-def _read_json(path: Path) -> Any:
-    return json.loads(path.read_text())
+def _read_json(path: Path, fallback: Any = None) -> Any:
+    try:
+        return json.loads(path.read_text())
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return fallback
 
 
 def _repo_relative(path: Path) -> str:

@@ -156,7 +156,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
   }, [onReturnComplete, returning]);
 
   const enter = () => {
-    if (entering || returning || !previewReady) {
+    if (entering || returning) {
       return;
     }
     const transform = syncZoomTarget();
@@ -185,7 +185,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
     <main ref={rootRef} className={`mercury-intro ${entering ? "entering" : ""} ${returning ? "returning" : ""}`}>
       <nav className="intro-nav" aria-label="Intro">
         <span>AeroLab</span>
-        <button onClick={enter} disabled={returning || !previewReady}>Open simulator</button>
+        <button onClick={enter} disabled={returning || entering}>Open simulator</button>
       </nav>
 
       <section ref={sceneRef} className="observatory-scene" aria-label="Mountain top command center">
@@ -195,7 +195,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
         <div className="glass-wall" aria-hidden="true" />
         <div className="floor-grid" aria-hidden="true" />
 
-        <button className="command-console" onClick={enter} disabled={returning || !previewReady} aria-label="Enter AeroLab simulator">
+        <button className="command-console" onClick={enter} disabled={returning || entering} aria-label="Enter AeroLab simulator">
           <span className="monitor-stand" aria-hidden="true" />
           <span className="monitor-shell">
             <span ref={screenRef} className="monitor-screen">
@@ -227,7 +227,7 @@ export function LandingPage({ mode = "idle", onEnter, onReturnComplete }: Landin
         <div className="intro-copy">
           <p>Open Source Flight Simulator</p>
           <h1>AeroLab</h1>
-          <button onClick={enter} disabled={returning || !previewReady}>Enter simulation</button>
+          <button onClick={enter} disabled={returning || entering}>Enter simulation</button>
         </div>
       </section>
     </main>

@@ -204,12 +204,17 @@ class WebApiTests(unittest.TestCase):
     def test_telemetry_metadata_fallback_for_unknown_channels(self):
         from aerosim6dof.telemetry.metadata import metadata_for_channels
 
-        metadata = metadata_for_channels({"history": ["custom_rate_mps"], "sensors": ["mystery_valid"]})
+        metadata = metadata_for_channels({"history": ["custom_rate_mps"], "sensors": ["mystery_valid"], "derived": ["estimate_altitude_m", "gnss_quality", "covariance_trace"]})
         self.assertEqual(metadata["custom_rate_mps"]["display_name"], "Custom Rate")
         self.assertEqual(metadata["custom_rate_mps"]["unit"], "m/s")
         self.assertEqual(metadata["custom_rate_mps"]["group"], "Unknown")
         self.assertEqual(metadata["mystery_valid"]["source"], "sensors")
         self.assertEqual(metadata["mystery_valid"]["role"], "sensor")
+        self.assertEqual(metadata["estimate_altitude_m"]["source"], "derived")
+        self.assertEqual(metadata["estimate_altitude_m"]["role"], "estimate")
+        self.assertTrue(metadata["estimate_altitude_m"]["derived"])
+        self.assertEqual(metadata["gnss_quality"]["role"], "estimate")
+        self.assertEqual(metadata["covariance_trace"]["role"], "estimate")
 
     def test_seed_suite_requires_current_history_schema(self):
         from aerosim6dof.web import api

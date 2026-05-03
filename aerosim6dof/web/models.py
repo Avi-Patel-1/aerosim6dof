@@ -145,7 +145,7 @@ class TelemetryChannelMetadata(BaseModel):
     description: str = ""
     group: str = "Unknown"
     source: Literal["history", "truth", "controls", "sensors", "derived"] = "history"
-    role: Literal["truth", "sensor", "command", "actuator_state", "environment", "aero", "gnc", "propulsion", "derived"] = "truth"
+    role: Literal["truth", "sensor", "command", "actuator_state", "environment", "aero", "gnc", "propulsion", "derived", "estimate"] = "truth"
     valid_range: TelemetryRange | None = None
     caution_range: TelemetryRange | None = None
     warning_range: TelemetryRange | None = None

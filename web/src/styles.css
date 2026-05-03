@@ -1918,6 +1918,24 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.table-link-button {
+  max-width: 100%;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+.table-link-button:hover,
+.table-link-button:focus-visible {
+  color: var(--color-starlight);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .operations-suggestion-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2823,6 +2841,11 @@ textarea {
   min-width: 0;
 }
 
+.integration-map-card {
+  grid-column: span 2;
+  min-width: 0;
+}
+
 .report-studio {
   display: grid;
   gap: 22px;
@@ -3147,6 +3170,11 @@ pre {
     justify-content: flex-start;
   }
 
+  .job-rail {
+    position: static;
+    top: auto;
+  }
+
   .console-overview,
   .editor-layout,
   .scenario-builder-v2-layout,
@@ -3170,6 +3198,10 @@ pre {
   }
 
   .report-studio-panel {
+    grid-column: auto;
+  }
+
+  .integration-map-card {
     grid-column: auto;
   }
 
@@ -3403,7 +3435,7 @@ pre {
   .speed-strip,
   .viewer-tools {
     width: 100%;
-    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-columns: minmax(88px, max-content);
   }
 
   .tool-grid {
