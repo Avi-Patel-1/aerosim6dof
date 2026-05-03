@@ -130,6 +130,22 @@ class WebApiProductionContractTests(unittest.TestCase):
         self.assertEqual(payload["metadata"]["estimate_altitude_m"]["display_name"], "Estimate Altitude")
         self.assertIn("estimate_position_error_m", payload["rows"][0])
 
+    def test_estimation_report_action_writes_fusion_artifacts(self) -> None:
+        response = self.client.post("/api/actions/estimation_report", json={"params": {"run_id": self.run_id}})
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertEqual(payload["action"], "estimation_report")
+        self.assertEqual(payload["status"], "completed")
+        self.assertIn("estimate_position", payload["data"]["available_comparisons"])
+        self.assertIn("gnss_position", payload["data"]["available_comparisons"])
+        artifacts = {artifact["name"]: artifact for artifact in payload["artifacts"]}
+        self.assertIn("estimation_summary.json", artifacts)
+        self.assertIn("estimation_metrics.csv", artifacts)
+        self.assertIn("residuals.csv", artifacts)
+        self.assertIn("estimation_report.html", artifacts)
+        self.assertTrue(payload["output_id"].startswith("web_runs~estimation_report_"))
+
     def test_navigation_telemetry_missing_run_is_404(self) -> None:
         response = self.client.get("/api/runs/missing~run/navigation")
 

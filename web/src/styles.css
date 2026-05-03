@@ -2705,6 +2705,17 @@ textarea {
   background: linear-gradient(90deg, var(--color-mercury-blue), rgba(237, 237, 243, 0.92));
 }
 
+.estimation-panel-layout {
+  grid-template-columns: minmax(0, 1.32fr) minmax(290px, 0.68fr);
+}
+
+.estimation-panel .report-panel,
+.estimation-panel .builder-section,
+.estimation-panel .artifact-links a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .scenario-builder-v2-warning-panel {
   min-width: 0;
   display: grid;
@@ -3085,6 +3096,10 @@ pre {
   .engagement-lower-grid,
   .telemetry-ops-runbar,
   .operations-telemetry-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .estimation-panel-layout {
     grid-template-columns: 1fr;
   }
 

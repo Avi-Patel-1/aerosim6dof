@@ -36,6 +36,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 | **Home** | Leaves the workbench and returns to the landing page. |
 | **Replay** | Shows the 3D flight replay, current metrics, event timeline, quick telemetry charts, and artifact links for a selected run. |
 | **Telemetry** | Opens the operations telemetry console with subsystem grouping, search, pinned channels, current/min/max readouts, cursor-linked charts, comparison traces, CSV export, and saved chart layouts. |
+| **Estimation** | Compares truth, sensors, and fused navigation estimates for the selected run, then generates residual, GNSS-quality, sensor-aiding, SVG, CSV, JSON, and HTML estimation reports. |
 | **Run selector** | Switches between preloaded scenarios and newly generated runs. Fresh deployments preload the packaged scenario suite. |
 | **Range / Coast / Night** | Changes the replay environment style so the same trajectory can be inspected in different visual contexts. |
 | **Chase / Orbit / Cockpit / Map / Range Safety** | Changes the camera mode for following, inspecting, riding with, mapping, or reviewing the engagement geometry from a range-safety perspective. |
@@ -64,6 +65,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 - **Model inspection:** use **Models** to review vehicle, aerodynamic, propulsion, and environment assumptions before trusting a run.
 - **Intercept studies:** use **Editor** to add primary and decoy targets plus interceptor definitions, then replay target labels, miss-distance markers, interceptor geometry, and engagement reports.
 - **Operations telemetry review:** use **Telemetry** to answer what happened by subsystem, pin important parameters, compare against another run, inspect current/min/max values, and export selected channels for offline review.
+- **Navigation and sensor-fusion review:** use **Estimation** to compare truth, GNSS, barometer, pitot, radar altimeter, IMU, and simple fused estimates, then export a report that shows residuals and availability.
 - **New scenario drafting:** use **Editor** to start from a packaged scenario or preset, adjust duration, initial state, vehicle, environment, guidance, sensors, sensor-fault timelines, target/interceptor objects, outputs, and event limits, then validate and run the draft.
 
 ## Quick Start
@@ -124,6 +126,7 @@ The web interface provides a full simulator workbench around the existing Python
 - Run browser with summary metrics, event timeline, and artifact links
 - Telemetry charts for flight, controls, and sensor channels
 - Dedicated operations telemetry console with subsystem panels, parameter search, pinned channels, min/max/current values, cursor-linked multi-axis charts, compare traces, selected-channel export, and local saved layouts
+- Estimation/Nav tab for truth-vs-sensor-vs-estimate review, GNSS availability, residual metrics, sensor aiding health, and generated estimation reports
 - Scenario validation, run creation, batch, Monte Carlo, sweep, fault-campaign, trim, linearization, stability, model inspection, and report workflows
 - Trade Space tab for 6DOF-backed parameter sweeps, seeded robustness studies, campaign bundles, Pareto ranking, reliability, UQ, sensitivity, surrogate fitting, and optimization candidate generation
 - Engagement reports for target/interceptor runs
@@ -216,6 +219,7 @@ Batch and Monte Carlo runs additionally write aggregate index CSV files and HTML
 - `monte_carlo_index.csv`, `monte_carlo_summary.json`, and `monte_carlo_report.html`
 - `fault_campaign_index.csv`, `fault_campaign_summary.json`, and `fault_campaign_report.html`
 - `sensor_report/sensor_metrics.json`, `sensor_report/sensor_metrics.csv`, and `sensor_report/sensor_report.html`
+- `estimation_summary.json`, `estimation_metrics.csv`, `residuals.csv`, `estimation_report.html`, and `plots/*.svg` for browser estimation/fusion reports
 - `trade_space_summary.json`, `design_ranking.csv`, `pareto.csv`, `sensitivity.csv`, `reliability_summary.json`, `uq_summary.json`, `surrogate.json`, `optimization_results.csv`, `trade_space_report.html`, and `plots/*.svg` for browser trade-space studies
 
 ## Packaged Scenarios

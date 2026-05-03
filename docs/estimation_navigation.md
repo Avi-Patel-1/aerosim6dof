@@ -75,6 +75,36 @@ and frontend telemetry tables. Core channel metadata is included for:
 - `estimate_position_error_m`, `estimate_velocity_error_mps`
 - `gnss_quality`, `covariance_trace`, `gps_valid`
 
+## Estimation/Fusion Reports
+
+The browser workbench also exposes an Estimation tab and an
+`estimation_report` action. The report is post-run only: it reads existing
+`truth.csv`, `sensors.csv`, and `history.csv` artifacts, aligns the tables by
+time, and writes a separate report directory without changing the simulation
+math or source CSV columns.
+
+```python
+from aerosim6dof.analysis.estimation_report import estimation_report
+
+summary = estimation_report(
+    "outputs/web_runs/seed_scenario_suite/gps_dropout_navigation",
+    "outputs/web_runs/example_estimation_report",
+)
+```
+
+Generated artifacts include:
+
+- `estimation_summary.json`
+- `estimation_metrics.csv`
+- `residuals.csv`
+- `estimation_report.html`
+- `plots/*.svg`
+
+The summary reports available comparison families for GNSS position/velocity,
+barometer altitude, pitot airspeed, radar-altimeter AGL, IMU acceleration/gyro,
+and simple fused position/velocity estimates. Missing channels are skipped and
+recorded as warnings so sparse runs can still load in the browser.
+
 ## GNSS Quality Score
 
 `gnss_quality_score(row, config=None)` returns a value in `[0, 1]`.

@@ -147,6 +147,7 @@ class WebApiTests(unittest.TestCase):
             self.assertIn("linear_model_report", names)
             self.assertIn("engagement_report", names)
             self.assertIn("trade_space", names)
+            self.assertIn("estimation_report", names)
 
             trim = self.client.post(
                 "/api/actions/trim",
@@ -182,6 +183,16 @@ class WebApiTests(unittest.TestCase):
             self.assertIn("ranked_preview", trade_payload["data"])
             self.assertTrue(any(artifact["name"] == "trade_space_report.html" for artifact in trade_payload["artifacts"]))
             self.assertTrue(any(artifact["name"] == "pareto.csv" for artifact in trade_payload["artifacts"]))
+
+            run_id = self.client.get("/api/runs").json()[0]["id"]
+            estimation = self.client.post("/api/actions/estimation_report", json={"params": {"run_id": run_id}})
+            self.assertEqual(estimation.status_code, 200, estimation.text)
+            estimation_payload = estimation.json()
+            self.assertEqual(estimation_payload["action"], "estimation_report")
+            self.assertTrue(estimation_payload["output_id"].startswith("web_actions_test_api~estimation_report_"))
+            self.assertIn("available_comparisons", estimation_payload["data"])
+            self.assertTrue(any(artifact["name"] == "estimation_report.html" for artifact in estimation_payload["artifacts"]))
+            self.assertTrue(any(artifact["name"] == "residuals.csv" for artifact in estimation_payload["artifacts"]))
         finally:
             api.WEB_RUNS_DIR = original
             shutil.rmtree(run_root, ignore_errors=True)

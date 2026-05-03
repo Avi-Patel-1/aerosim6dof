@@ -24,6 +24,7 @@ from aerosim6dof.analysis.compare import compare_histories
 from aerosim6dof.analysis.config_tools import config_diff, generate_scenario, inspect_vehicle
 from aerosim6dof.analysis.environment import environment_report
 from aerosim6dof.analysis.engagement import engagement_report
+from aerosim6dof.analysis.estimation_report import estimation_report
 from aerosim6dof.analysis.examples_gallery import build_examples_gallery
 from aerosim6dof.analysis.missile_engagement_compare import build_missile_engagement_comparison, is_missile_showcase_run
 from aerosim6dof.analysis.propulsion import inspect_propulsion, thrust_curve_report
@@ -111,6 +112,7 @@ CAPABILITIES = [
     {"id": "report", "group": "analysis", "label": "Report"},
     {"id": "engagement_report", "group": "analysis", "label": "Engagement"},
     {"id": "sensor_report", "group": "analysis", "label": "Sensor Report"},
+    {"id": "estimation_report", "group": "analysis", "label": "Estimation Report"},
     {"id": "trim", "group": "engineering", "label": "Trim"},
     {"id": "trim_sweep", "group": "engineering", "label": "Trim Sweep"},
     {"id": "linearize", "group": "engineering", "label": "Linearize"},
@@ -679,6 +681,12 @@ def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:
         out = _action_dir("sensor_report", run_dir.name)
         data = sensor_report(run_dir, out)
         return _action_result(action, out, data)
+    if action == "estimation_report":
+        run_dir = _run_dir_from_id(str(params["run_id"]))
+        out = _action_dir("estimation_report", run_dir.name)
+        max_gap = params.get("max_time_gap_s")
+        data = estimation_report(run_dir, out, max_time_gap_s=float(max_gap) if max_gap is not None else None)
+        return _action_result(action, out, data)
     if action == "trim":
         out = _action_dir("trim", vehicle_id)
         data = simple_trim(load_json(_vehicle_path(vehicle_id)), float(params.get("speed_mps", 120.0)), float(params.get("altitude_m", 1000.0)))
@@ -811,6 +819,7 @@ def _action_stage(action: str) -> str:
         "report",
         "engagement_report",
         "sensor_report",
+        "estimation_report",
         "aero_report",
         "thrust_curve_report",
         "environment_report",

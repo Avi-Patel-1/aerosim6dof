@@ -77,6 +77,7 @@ import { channelLabel, channelLabelWithUnit } from "../telemetry";
 import { buildReplayOverlayState, buildTrailColorLegendDescriptor } from "../replayVisuals";
 import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
 import { CampaignDesigner } from "./CampaignDesigner";
+import { EstimationPanel, type EstimationActionPayload } from "./EstimationPanel";
 import { ExamplesGallery } from "./ExamplesGallery";
 import { LiveProgressPanel } from "./LiveProgressPanel";
 import { MissileEngagementAnalysis } from "./MissileEngagementAnalysis";
@@ -89,7 +90,7 @@ import { ScenarioBuilderV2 } from "./ScenarioBuilderV2";
 import { TelemetryChart } from "./TelemetryChart";
 import { TradeSpacePanel, type TradeSpaceActionPayload } from "./TradeSpacePanel";
 
-type TabId = "replay" | "telemetry" | "engagement" | "launch" | "campaigns" | "trade" | "engineering" | "models" | "editor" | "reports";
+type TabId = "replay" | "telemetry" | "estimation" | "engagement" | "launch" | "campaigns" | "trade" | "engineering" | "models" | "editor" | "reports";
 type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
 type CameraMode = "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
@@ -98,6 +99,7 @@ type TrailColorMode = "plain" | "speed" | "qbar" | "load" | "altitude";
 const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "replay", label: "Replay", title: "Replay the vehicle in full flight context.", subtitle: "Scrub attitude, trajectory, events, and sampled telemetry from the selected output run." },
   { id: "telemetry", label: "Telemetry", title: "Answer what happened, when, and why.", subtitle: "Search, pin, compare, export, and inspect subsystem telemetry like a mission operations console." },
+  { id: "estimation", label: "Estimation", title: "Compare truth, sensors, and navigation estimates.", subtitle: "Inspect GNSS availability, residuals, covariance, and sensor aiding health for the selected run." },
   { id: "engagement", label: "Engagement", title: "Review terminal missile engagement behavior.", subtitle: "Compare seeker lock, range closure, motor phase, actuator saturation, fuze state, and closest approach." },
   { id: "launch", label: "Launch", title: "Run, validate, compare, and report.", subtitle: "Execute scenarios through the existing Python engine and keep generated outputs under web runs." },
   { id: "campaigns", label: "Campaigns", title: "Batch the uncertainty space.", subtitle: "Monte Carlo, parameter sweeps, fault campaigns, and batch workflows are available from one console." },
@@ -266,6 +268,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
   const [compareRunId, setCompareRunId] = useState("");
   const [runDetail, setRunDetail] = useState<RunSummary | null>(initialHandoff?.run ?? null);
   const [telemetry, setTelemetry] = useState<TelemetrySeries | null>(initialHandoff?.telemetry ?? null);
+  const [navigationTelemetry, setNavigationTelemetry] = useState<NavigationTelemetry | null>(null);
   const [compareTelemetry, setCompareTelemetry] = useState<TelemetrySeries | null>(null);
   const [alarms, setAlarms] = useState<AlarmSummary[]>([]);
   const [acknowledgedAlarms, setAcknowledgedAlarms] = useState<Record<string, boolean>>({});
@@ -416,6 +419,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
       setTelemetry(null);
       setCurrentIndex(0);
     }
+    setNavigationTelemetry(null);
     setAlarms([]);
     setReportPacket(null);
     setAcknowledgedAlarms({});
@@ -432,6 +436,7 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
         const augmentedSeries = telemetryWithNavigation(series, navigation);
         setRunDetail(detail);
         setTelemetry(augmentedSeries);
+        setNavigationTelemetry(navigation);
         setAlarms(alarmItems);
         if (canReuseHandoff) {
           setCurrentIndex((index) => Math.min(index, Math.max(augmentedSeries.history.length - 1, 0)));
@@ -655,6 +660,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
 
   const runTradeSpacePlan = async (payload: TradeSpaceActionPayload) => {
     await runTool("trade_space", payload.params);
+  };
+
+  const runEstimationPlan = async (payload: EstimationActionPayload) => {
+    await runTool(payload.action, payload.params, "estimation");
   };
 
   const cancelActiveJob = async (jobId: string) => {
@@ -1266,6 +1275,21 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
               compareRunLabel={compareRunLabel}
               alarms={alarms}
               events={runDetail?.events}
+            />
+          </div>
+        )}
+
+        {activeTab === "estimation" && (
+          <div className="stacked-surface">
+            <EstimationPanel
+              runs={runs}
+              results={results}
+              busyAction={busyAction}
+              selectedRunId={selectedRunId}
+              telemetry={telemetry}
+              navigation={navigationTelemetry}
+              onRunChange={setSelectedRunId}
+              onRunAction={runEstimationPlan}
             />
           </div>
         )}
