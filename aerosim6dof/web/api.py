@@ -36,6 +36,12 @@ from aerosim6dof.analysis.scenario_builder import (
 )
 from aerosim6dof.analysis.sensors import sensor_report
 from aerosim6dof.analysis.stability import linear_model_report, stability_report, trim_sweep
+from aerosim6dof.analysis.trade_space import (
+    analyze_existing_runs,
+    run_trade_space_campaign,
+    run_trade_space_study,
+    run_trade_space_sweep,
+)
 from aerosim6dof.config import deep_merge, load_json, load_with_optional_base
 from aerosim6dof.estimation.navigation_filter import load_navigation_telemetry_from_run
 from aerosim6dof.gnc.trim import simple_trim, write_trim_result
@@ -99,6 +105,7 @@ CAPABILITIES = [
     {"id": "monte_carlo", "group": "campaign", "label": "Monte Carlo"},
     {"id": "sweep", "group": "campaign", "label": "Sweep"},
     {"id": "fault_campaign", "group": "campaign", "label": "Fault Campaign", "faults": sorted(FAULT_LIBRARY)},
+    {"id": "trade_space", "group": "campaign", "label": "Trade Space"},
     {"id": "compare_runs", "group": "analysis", "label": "Compare"},
     {"id": "missile_engagement_comparison", "group": "analysis", "label": "Missile Engagement Comparison"},
     {"id": "report", "group": "analysis", "label": "Report"},
@@ -604,6 +611,45 @@ def _execute_action(action: str, params: dict[str, Any]) -> ActionResult:
         out = _action_dir("fault_campaign", scenario.name)
         data = run_fault_campaign(scenario, out, fault_names, max_runs=max(1, min(int(params.get("max_runs", 12)), 50)))
         return _action_result(action, out, data)
+    if action == "trade_space":
+        mode = str(params.get("mode", "study"))
+        out = _action_dir("trade_space", str(params.get("label", scenario_id)))
+        if mode == "existing_runs":
+            raw_ids = params.get("run_ids")
+            if not isinstance(raw_ids, list) or not raw_ids:
+                raise ValueError("trade_space existing_runs requires run_ids")
+            run_dirs = [_run_dir_from_id(str(run_id)) for run_id in raw_ids[:80]]
+            data = analyze_existing_runs(run_dirs, out, study_name=str(params.get("label", "Existing run trade space")))
+        elif mode == "sweep":
+            scenario = Scenario.from_file(_scenario_path(scenario_id))
+            parameter = str(params.get("parameter", "guidance.throttle"))
+            values = _parse_value_list(params.get("values", "0.78,0.86,0.94"))
+            data = run_trade_space_sweep(scenario, out, parameter=parameter, values=values)
+        elif mode == "campaign":
+            scenario = Scenario.from_file(_scenario_path(scenario_id))
+            data = run_trade_space_campaign(scenario, out, seed=int(params.get("seed", 2026)), samples=max(2, min(int(params.get("samples", 8)), 18)))
+        else:
+            scenario = Scenario.from_file(_scenario_path(scenario_id))
+            parameters = params.get("parameters")
+            parameter = params.get("parameter")
+            if not isinstance(parameters, dict) and parameter:
+                parameters = {str(parameter): _parse_value_list(params.get("values", ""))}
+            dispersions = params.get("dispersions")
+            if not isinstance(dispersions, dict):
+                dispersions = {
+                    "vehicle.mass_kg": float(params.get("mass_sigma_kg", 0.2)),
+                    "wind.steady_mps.0": float(params.get("wind_sigma_mps", 0.1)),
+                    "guidance.throttle": float(params.get("throttle_sigma", 0.02)),
+                }
+            data = run_trade_space_study(
+                scenario,
+                out,
+                samples=max(1, min(int(params.get("samples", 8)), 36)),
+                seed=int(params.get("seed", 2026)),
+                parameters=parameters if isinstance(parameters, dict) else None,
+                dispersions=dispersions,
+            )
+        return _action_result(action, out, data)
     if action == "compare_runs":
         run_a = _run_dir_from_id(str(params["run_a_id"]))
         run_b = _run_dir_from_id(str(params["run_b_id"]))
@@ -757,6 +803,8 @@ def _job_update(
 def _action_stage(action: str) -> str:
     if action in {"run", "batch", "monte_carlo", "sweep", "fault_campaign"}:
         return "running simulation"
+    if action == "trade_space":
+        return "building trade space"
     if action in {
         "compare_runs",
         "missile_engagement_comparison",

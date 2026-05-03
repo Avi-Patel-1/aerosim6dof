@@ -12,7 +12,7 @@ Open the public full-stack simulator at [https://aerosim6dof.onrender.com](https
 | --- | --- | --- |
 | ![AeroSim 6DOF landing page](docs/images/aerosim-live-landing.png) | ![AeroSim 6DOF replay view](docs/images/aerosim-live-replay.png) | ![AeroSim 6DOF workflow controls](docs/images/aerosim-live-workflows.png) |
 
-The landing page opens into the browser simulator. The replay view uses generated telemetry from the Python 6DOF engine, while the workflow tabs expose validation, run creation, campaign, engineering, model, editor, and report tools.
+The landing page opens into the browser simulator. The replay view uses generated telemetry from the Python 6DOF engine, while the workflow tabs expose validation, run creation, campaign, trade-space, engineering, model, editor, and report tools.
 
 ### What the Site Is
 
@@ -48,6 +48,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 | **Add channel** | Adds another telemetry channel to the chart for comparison. Clicking a channel chip removes it. |
 | **Launch** | Validates scenarios, runs selected scenarios, compares two runs, builds reports, creates sensor reports, and generates engagement reports. |
 | **Campaigns** | Runs batches, Monte Carlo dispersions, parameter sweeps, and fault campaigns. |
+| **Trade Space** | Runs real 6DOF design sweeps, robustness studies, and campaign bundles, then writes Pareto rankings, reliability summaries, uncertainty quantification, sensitivity tables, surrogate models, optimization candidates, SVG plots, and an HTML trade-space report. |
 | **Engineering** | Runs trim, trim sweeps, linearization, stability analysis, and linear-model reports. |
 | **Models** | Inspects vehicle configs, compares vehicles, generates scenario templates, and creates aero, propulsion, and environment reports. |
 | **Editor** | Opens Scenario Builder v2: mission profile, vehicle, environment, initial state, GNC, sensors, faults, targets/interceptors, termination, outputs, and expert JSON in one guarded mission-design tool. |
@@ -58,6 +59,7 @@ This is useful when you want to evaluate early flight-vehicle concepts, compare 
 - **Trajectory review:** choose a run, press **Play**, scrub to key events, and compare altitude, speed, qbar, load factor, controls, and sensor channels.
 - **Scenario comparison:** use **Launch** to run or compare two cases, then open the generated report artifacts.
 - **Robustness testing:** use **Campaigns** for Monte Carlo samples, parameter sweeps, or fault campaigns to see how sensitive a configuration is.
+- **Design trade studies:** use **Trade Space** when you want candidate settings ranked by real simulator outputs rather than only a list of runs. It is the fastest path for answering which throttle, pitch, wind, or mass cases are feasible and which parameter drove the result.
 - **Control and stability checks:** use **Engineering** to trim a vehicle, sweep trim points, linearize a scenario, and inspect stability outputs.
 - **Model inspection:** use **Models** to review vehicle, aerodynamic, propulsion, and environment assumptions before trusting a run.
 - **Intercept studies:** use **Editor** to add primary and decoy targets plus interceptor definitions, then replay target labels, miss-distance markers, interceptor geometry, and engagement reports.
@@ -123,6 +125,7 @@ The web interface provides a full simulator workbench around the existing Python
 - Telemetry charts for flight, controls, and sensor channels
 - Dedicated operations telemetry console with subsystem panels, parameter search, pinned channels, min/max/current values, cursor-linked multi-axis charts, compare traces, selected-channel export, and local saved layouts
 - Scenario validation, run creation, batch, Monte Carlo, sweep, fault-campaign, trim, linearization, stability, model inspection, and report workflows
+- Trade Space tab for 6DOF-backed parameter sweeps, seeded robustness studies, campaign bundles, Pareto ranking, reliability, UQ, sensitivity, surrogate fitting, and optimization candidate generation
 - Engagement reports for target/interceptor runs
 - Scenario Builder v2 with guided mission profile, vehicle, environment, initial state, GNC, sensors, faults, targets/interceptors, termination, outputs, validation advisories, an explanation summary, presets, and raw JSON expert mode
 
@@ -213,6 +216,7 @@ Batch and Monte Carlo runs additionally write aggregate index CSV files and HTML
 - `monte_carlo_index.csv`, `monte_carlo_summary.json`, and `monte_carlo_report.html`
 - `fault_campaign_index.csv`, `fault_campaign_summary.json`, and `fault_campaign_report.html`
 - `sensor_report/sensor_metrics.json`, `sensor_report/sensor_metrics.csv`, and `sensor_report/sensor_report.html`
+- `trade_space_summary.json`, `design_ranking.csv`, `pareto.csv`, `sensitivity.csv`, `reliability_summary.json`, `uq_summary.json`, `surrogate.json`, `optimization_results.csv`, `trade_space_report.html`, and `plots/*.svg` for browser trade-space studies
 
 ## Packaged Scenarios
 
@@ -229,6 +233,7 @@ aerosim6dof/
   sensors/       IMU, GPS, barometer, pitot, magnetometer, radar, optical flow, horizon
   simulation/    Dynamics, events, runner, logging, Monte Carlo and fault campaigns
   analysis/      Metrics, envelopes, validation, comparison, subsystem reports
+  tradespace/    Pareto, reliability, UQ, sensitivity, surrogate, and optimization primitives for run-output studies
   reports/       CSV, JSON, SVG, and HTML writers
   web/           FastAPI browser API, run indexing, jobs, and artifact access
 examples/

@@ -87,8 +87,9 @@ import { ReplaySceneOverlayLegend } from "./ReplaySceneOverlayLegend";
 import { ReportStudio } from "./ReportStudio";
 import { ScenarioBuilderV2 } from "./ScenarioBuilderV2";
 import { TelemetryChart } from "./TelemetryChart";
+import { TradeSpacePanel, type TradeSpaceActionPayload } from "./TradeSpacePanel";
 
-type TabId = "replay" | "telemetry" | "engagement" | "launch" | "campaigns" | "engineering" | "models" | "editor" | "reports";
+type TabId = "replay" | "telemetry" | "engagement" | "launch" | "campaigns" | "trade" | "engineering" | "models" | "editor" | "reports";
 type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
 type CameraMode = "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
@@ -100,6 +101,7 @@ const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "engagement", label: "Engagement", title: "Review terminal missile engagement behavior.", subtitle: "Compare seeker lock, range closure, motor phase, actuator saturation, fuze state, and closest approach." },
   { id: "launch", label: "Launch", title: "Run, validate, compare, and report.", subtitle: "Execute scenarios through the existing Python engine and keep generated outputs under web runs." },
   { id: "campaigns", label: "Campaigns", title: "Batch the uncertainty space.", subtitle: "Monte Carlo, parameter sweeps, fault campaigns, and batch workflows are available from one console." },
+  { id: "trade", label: "Trade Space", title: "Rank candidate designs from real 6DOF outputs.", subtitle: "Run sweeps, robustness samples, campaign bundles, Pareto ranking, reliability, UQ, sensitivity, surrogate, and optimization studies." },
   { id: "engineering", label: "Engineering", title: "Trim, linearize, and inspect stability.", subtitle: "Use the simulator's engineering analysis commands without leaving the browser." },
   { id: "models", label: "Models", title: "Open the configuration surface.", subtitle: "Inspect vehicles, aerodynamic data, propulsion, environments, and scenario templates." },
   { id: "editor", label: "Editor", title: "Draft scenarios with guardrails.", subtitle: "Use guided controls or raw JSON, validate before launch, and preserve checked-in examples." },
@@ -649,6 +651,10 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
     } finally {
       setBusyAction("");
     }
+  };
+
+  const runTradeSpacePlan = async (payload: TradeSpaceActionPayload) => {
+    await runTool("trade_space", payload.params);
   };
 
   const cancelActiveJob = async (jobId: string) => {
@@ -1365,6 +1371,22 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                 <TextField label="Faults" value={faults} onChange={setFaults} />
               </ActionCard>
             </div>
+          </div>
+        )}
+
+        {activeTab === "trade" && (
+          <div className="stacked-surface">
+            <TradeSpacePanel
+              scenarios={scenarios}
+              vehicles={vehicles}
+              selectedScenarioId={selectedScenario}
+              selectedVehicleId={selectedVehicle}
+              busyAction={busyAction}
+              results={results}
+              onScenarioChange={setSelectedScenario}
+              onVehicleChange={setSelectedVehicle}
+              onRunTrade={runTradeSpacePlan}
+            />
           </div>
         )}
 

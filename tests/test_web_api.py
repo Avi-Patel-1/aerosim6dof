@@ -146,6 +146,7 @@ class WebApiTests(unittest.TestCase):
             self.assertIn("monte_carlo", names)
             self.assertIn("linear_model_report", names)
             self.assertIn("engagement_report", names)
+            self.assertIn("trade_space", names)
 
             trim = self.client.post(
                 "/api/actions/trim",
@@ -160,6 +161,27 @@ class WebApiTests(unittest.TestCase):
             inspect = self.client.post("/api/actions/inspect_vehicle", json={"params": {"vehicle_id": "baseline"}})
             self.assertEqual(inspect.status_code, 200)
             self.assertEqual(inspect.json()["data"]["name"], "baseline_research_vehicle")
+
+            trade = self.client.post(
+                "/api/actions/trade_space",
+                json={
+                    "params": {
+                        "mode": "sweep",
+                        "scenario_id": "nominal_ascent",
+                        "parameter": "guidance.throttle",
+                        "values": [0.82, 0.86],
+                        "label": "api_trade_smoke",
+                    }
+                },
+            )
+            self.assertEqual(trade.status_code, 200, trade.text)
+            trade_payload = trade.json()
+            self.assertEqual(trade_payload["action"], "trade_space")
+            self.assertTrue(trade_payload["output_id"].startswith("web_actions_test_api~trade_space_"))
+            self.assertEqual(trade_payload["data"]["runs"], 2)
+            self.assertIn("ranked_preview", trade_payload["data"])
+            self.assertTrue(any(artifact["name"] == "trade_space_report.html" for artifact in trade_payload["artifacts"]))
+            self.assertTrue(any(artifact["name"] == "pareto.csv" for artifact in trade_payload["artifacts"]))
         finally:
             api.WEB_RUNS_DIR = original
             shutil.rmtree(run_root, ignore_errors=True)
