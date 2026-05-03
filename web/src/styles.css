@@ -2716,6 +2716,67 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.integration-map-panel {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.integration-map-panel > p {
+  color: var(--color-silver);
+  line-height: 1.55;
+  max-width: 68ch;
+  overflow-wrap: anywhere;
+}
+
+.integration-map-list {
+  display: grid;
+  gap: 14px;
+}
+
+.integration-map-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  border-top: 1px solid rgba(112, 112, 125, 0.34);
+  padding-top: 14px;
+}
+
+.integration-map-row > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--color-starlight);
+  background: rgba(205, 221, 255, 0.12);
+}
+
+.integration-map-row div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.integration-map-row strong,
+.integration-map-row p,
+.integration-map-row small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.integration-map-row p {
+  margin: 0;
+  color: var(--color-starlight);
+  line-height: 1.45;
+}
+
+.integration-map-row small {
+  color: var(--color-silver);
+  line-height: 1.4;
+}
+
 .scenario-builder-v2-warning-panel {
   min-width: 0;
   display: grid;

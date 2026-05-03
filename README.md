@@ -20,6 +20,19 @@ The live site is a browser front end for the same 6DOF simulation engine used by
 
 This is useful when you want to evaluate early flight-vehicle concepts, compare guidance or vehicle settings, test robustness against faults and uncertainty, explain a trajectory to someone visually, or review whether a simulated run stayed within speed, load, dynamic pressure, control, and sensor limits.
 
+### Unified Project Map
+
+AeroLab now provides the browser surface for the original 6DOF simulator plus the workflows from the companion Monte Carlo/trade-space and sensor-fusion projects. The old repositories remain independent CLI toolkits, while the hosted workbench exposes their practical workflows as tabs over real 6DOF output artifacts.
+
+| Original capability | Browser surface | What to use it for |
+| --- | --- | --- |
+| 6DOF simulation core | **Replay**, **Launch**, **Engineering**, **Models**, **Editor** | Run scenarios, inspect vehicle/environment assumptions, replay trajectories, and draft new missions. |
+| Monte Carlo and trade-space studies | **Campaigns**, **Trade Space** | Run batches, dispersions, sweeps, reliability, UQ, sensitivity, Pareto ranking, surrogate, and optimization studies. |
+| Sensor-fusion and navigation review | **Estimation**, **Telemetry** | Compare truth, GNSS, barometer, pitot, radar altimeter, IMU, and fused estimates with residual reports. |
+| Report and artifact packaging | **Reports** | Collect HTML, SVG, CSV, JSON, mission packets, action outputs, and background job history. |
+
+See `docs/integration_map.md` for the full source-to-tab mapping.
+
 ### How to Use the Live Simulator
 
 1. Open [https://aerosim6dof.onrender.com](https://aerosim6dof.onrender.com).
@@ -234,6 +247,7 @@ aerosim6dof/
   environment/   Atmosphere, gravity, wind, turbulence, and terrain models
   vehicle/       State, mass properties, geometry, propulsion, aero, actuators, failures
   gnc/           Guidance, autopilot, controllers, allocation, navigation, trim
+  estimation/    Navigation hooks plus post-run truth/sensor/estimate fusion reports
   sensors/       IMU, GPS, barometer, pitot, magnetometer, radar, optical flow, horizon
   simulation/    Dynamics, events, runner, logging, Monte Carlo and fault campaigns
   analysis/      Metrics, envelopes, validation, comparison, subsystem reports

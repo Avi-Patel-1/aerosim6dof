@@ -79,6 +79,7 @@ import { ActiveAlarmsPanel, AlarmHistoryPanel } from "./AlarmPanels";
 import { CampaignDesigner } from "./CampaignDesigner";
 import { EstimationPanel, type EstimationActionPayload } from "./EstimationPanel";
 import { ExamplesGallery } from "./ExamplesGallery";
+import { IntegrationMapPanel } from "./IntegrationMapPanel";
 import { LiveProgressPanel } from "./LiveProgressPanel";
 import { MissileEngagementAnalysis } from "./MissileEngagementAnalysis";
 import { OperationsTelemetryPanel } from "./OperationsTelemetryPanel";
@@ -1612,6 +1613,9 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
                   <span key={capability.id}>{capability.label}</span>
                 ))}
               </div>
+            </section>
+            <section className="report-panel">
+              <IntegrationMapPanel />
             </section>
             <LiveProgressPanel jobs={jobHistory} onCancel={cancelActiveJob} onRetry={retryExistingJob} />
           </div>

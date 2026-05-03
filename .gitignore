@@ -5,6 +5,7 @@ __pycache__/
 .ruff_cache/
 
 outputs/web_runs/
+outputs/web_*_test*/
 
 web/node_modules/
 web/dist/
