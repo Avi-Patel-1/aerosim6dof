@@ -20,6 +20,7 @@ JSON summaries, SVG plots, and HTML reports.
 | Models | What assumptions are in the configs? | vehicle, aero, propulsion, environment, and config analysis actions | model inspection JSON, aero/propulsion/environment reports, generated scenario templates |
 | Editor | How do I build a mission safely? | scenario schema, validation, examples, vehicles, environments | scenario drafts and validation advisories |
 | Reports | What can I package and share? | report studio, action artifacts, job state, storage index | mission packets, HTML reports, SVG plots, CSV/JSON artifacts |
+| Methodology | How do I review the engineering rationale? | architecture, model-assumption, validation, and extension guides | code-path references, artifact evidence chains, review prompts |
 
 ## Source Project Mapping
 
@@ -50,6 +51,9 @@ JSON summaries, SVG plots, and HTML reports.
    aero, propulsion, environment, and config assumptions.
 9. Use **Reports** to collect HTML, SVG, CSV, JSON, job history, and mission
    packet exports.
+10. Use **Methodology** to review architecture, modeling assumptions, analysis
+   workflows, validation strategy, and extension patterns with concrete code and
+   artifact references.
 
 ## Preservation Guarantees
 

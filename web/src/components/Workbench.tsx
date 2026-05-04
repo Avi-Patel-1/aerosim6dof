@@ -81,6 +81,7 @@ import { EstimationPanel, type EstimationActionPayload } from "./EstimationPanel
 import { ExamplesGallery } from "./ExamplesGallery";
 import { IntegrationMapPanel } from "./IntegrationMapPanel";
 import { LiveProgressPanel } from "./LiveProgressPanel";
+import { MethodologyPanel } from "./MethodologyPanel";
 import { MissileEngagementAnalysis } from "./MissileEngagementAnalysis";
 import { OperationsTelemetryPanel } from "./OperationsTelemetryPanel";
 import { ParameterInfoPanel } from "./ParameterInfoPanel";
@@ -91,7 +92,7 @@ import { ScenarioBuilderV2 } from "./ScenarioBuilderV2";
 import { TelemetryChart } from "./TelemetryChart";
 import { TradeSpacePanel, type TradeSpaceActionPayload } from "./TradeSpacePanel";
 
-type TabId = "replay" | "telemetry" | "estimation" | "engagement" | "launch" | "campaigns" | "trade" | "engineering" | "models" | "editor" | "reports";
+type TabId = "replay" | "telemetry" | "estimation" | "engagement" | "launch" | "campaigns" | "trade" | "engineering" | "models" | "editor" | "reports" | "methodology";
 type ChartMode = "flight" | "intercept" | "controls" | "sensors";
 type EnvironmentMode = "range" | "coast" | "night";
 type CameraMode = "chase" | "orbit" | "cockpit" | "map" | "rangeSafety";
@@ -108,7 +109,8 @@ const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "engineering", label: "Engineering", title: "Trim, linearize, and inspect stability.", subtitle: "Use the simulator's engineering analysis commands without leaving the browser." },
   { id: "models", label: "Models", title: "Open the configuration surface.", subtitle: "Inspect vehicles, aerodynamic data, propulsion, environments, and scenario templates." },
   { id: "editor", label: "Editor", title: "Draft scenarios with guardrails.", subtitle: "Use guided controls or raw JSON, validate before launch, and preserve checked-in examples." },
-  { id: "reports", label: "Reports", title: "Collect artifacts and job history.", subtitle: "Review generated HTML, SVG, CSV, JSON, action output, and background job events." }
+  { id: "reports", label: "Reports", title: "Collect artifacts and job history.", subtitle: "Review generated HTML, SVG, CSV, JSON, action output, and background job events." },
+  { id: "methodology", label: "Methodology", title: "Explain the engineering method.", subtitle: "Review architecture, model assumptions, analysis workflows, validation strategy, and extension paths." }
 ];
 
 const DEFAULT_CHANNELS: Record<ChartMode, string[]> = {
@@ -1643,6 +1645,12 @@ export function Workbench({ initialHandoff, onHome }: WorkbenchProps) {
               <IntegrationMapPanel />
             </section>
             <LiveProgressPanel jobs={jobHistory} onCancel={cancelActiveJob} onRetry={retryExistingJob} />
+          </div>
+        )}
+
+        {activeTab === "methodology" && (
+          <div className="stacked-surface" {...tabPanelProps("methodology")}>
+            <MethodologyPanel />
           </div>
         )}
       </section>
