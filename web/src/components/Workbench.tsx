@@ -110,7 +110,7 @@ const TABS: { id: TabId; label: string; title: string; subtitle: string }[] = [
   { id: "models", label: "Models", title: "Open the configuration surface.", subtitle: "Inspect vehicles, aerodynamic data, propulsion, environments, and scenario templates." },
   { id: "editor", label: "Editor", title: "Draft scenarios with guardrails.", subtitle: "Use guided controls or raw JSON, validate before launch, and preserve checked-in examples." },
   { id: "reports", label: "Reports", title: "Collect artifacts and job history.", subtitle: "Review generated HTML, SVG, CSV, JSON, action output, and background job events." },
-  { id: "methodology", label: "Methodology", title: "Explain the engineering method.", subtitle: "Review architecture, model assumptions, analysis workflows, validation strategy, and extension paths." }
+  { id: "methodology", label: "Methodology", title: "Explain the engineering method.", subtitle: "Review architecture, system flow, model assumptions, validation strategy, and extension paths." }
 ];
 
 const DEFAULT_CHANNELS: Record<ChartMode, string[]> = {

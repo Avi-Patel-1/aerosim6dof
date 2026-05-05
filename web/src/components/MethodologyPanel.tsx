@@ -16,6 +16,7 @@ import {
   TestTube2
 } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
+import { SystemFlowPanel } from "./SystemFlowPanel";
 
 type MethodologyCategory =
   | "architecture"
@@ -289,6 +290,7 @@ const REVIEW_PROMPTS = [
 ];
 
 export function MethodologyPanel() {
+  const [activeView, setActiveView] = useState<"questions" | "flow">("questions");
   const [activeCategory, setActiveCategory] = useState<MethodologyCategory>("architecture");
   const activeQuestions = useMemo(
     () => QUESTIONS.filter((question) => question.category === activeCategory),
@@ -324,71 +326,98 @@ export function MethodologyPanel() {
         </div>
       </div>
 
-      <div className="methodology-trace" aria-label="Evidence chain">
-        {TRACE_STEPS.map((step) => (
-          <article key={step.label}>
-            <span>{step.icon}</span>
-            <strong>{step.label}</strong>
-            <p>{step.detail}</p>
-          </article>
-        ))}
+      <div className="methodology-view-switch" role="tablist" aria-label="Methodology views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeView === "questions"}
+          className={activeView === "questions" ? "active" : ""}
+          onClick={() => setActiveView("questions")}
+        >
+          Questions
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeView === "flow"}
+          className={activeView === "flow" ? "active" : ""}
+          onClick={() => setActiveView("flow")}
+        >
+          System Flow
+        </button>
       </div>
 
-      <div className="methodology-category-strip" aria-label="Methodology categories">
-        {CATEGORIES.map((category) => (
-          <button
-            key={category.id}
-            type="button"
-            className={activeCategory === category.id ? "active" : ""}
-            aria-pressed={activeCategory === category.id}
-            onClick={() => setActiveCategory(category.id)}
-          >
-            {category.icon}
-            <span>{category.label}</span>
-          </button>
-        ))}
-      </div>
+      {activeView === "questions" ? (
+        <>
+          <div className="methodology-trace" aria-label="Evidence chain">
+            {TRACE_STEPS.map((step) => (
+              <article key={step.label}>
+                <span>{step.icon}</span>
+                <strong>{step.label}</strong>
+                <p>{step.detail}</p>
+              </article>
+            ))}
+          </div>
 
-      <div className="methodology-section-head">
-        <div>
-          <p className="eyebrow">{activeMeta.label}</p>
-          <h3>{activeMeta.summary}</h3>
-        </div>
-        <span>{activeQuestions.length} review questions</span>
-      </div>
+          <div className="methodology-category-strip" aria-label="Methodology categories">
+            {CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                className={activeCategory === category.id ? "active" : ""}
+                aria-pressed={activeCategory === category.id}
+                onClick={() => setActiveCategory(category.id)}
+              >
+                {category.icon}
+                <span>{category.label}</span>
+              </button>
+            ))}
+          </div>
 
-      <div className="methodology-question-grid">
-        {activeQuestions.map((item) => (
-          <article key={item.question} className="methodology-question">
-            <div className="methodology-question-title">
-              <BookOpen size={16} />
-              <h4>{item.question}</h4>
+          <div className="methodology-section-head">
+            <div>
+              <p className="eyebrow">{activeMeta.label}</p>
+              <h3>{activeMeta.summary}</h3>
             </div>
-            <p>{item.answer}</p>
-            <div className="methodology-evidence-grid">
-              <EvidenceList icon={<Target size={14} />} label="Verify in" items={item.verify} />
-              <EvidenceList icon={<Braces size={14} />} label="Code path" items={item.code} />
-              <EvidenceList icon={<FileJson size={14} />} label="Evidence" items={item.artifacts} />
-            </div>
-          </article>
-        ))}
-      </div>
+            <span>{activeQuestions.length} review questions</span>
+          </div>
 
-      <section className="methodology-review-panel" aria-label="Technical review prompts">
-        <div className="section-title">
-          <Radar size={16} />
-          <h3>Technical Review Prompts</h3>
-        </div>
-        <p>
-          These prompts are useful when reviewing a run, extending the model, or deciding whether an
-          analysis result is supported by the generated evidence.
-        </p>
-        <div className="methodology-prompt-list">
-          {REVIEW_PROMPTS.map((prompt) => (
-            <span key={prompt}>{prompt}</span>
-          ))}
-        </div>
-      </section>
+          <div className="methodology-question-grid">
+            {activeQuestions.map((item) => (
+              <article key={item.question} className="methodology-question">
+                <div className="methodology-question-title">
+                  <BookOpen size={16} />
+                  <h4>{item.question}</h4>
+                </div>
+                <p>{item.answer}</p>
+                <div className="methodology-evidence-grid">
+                  <EvidenceList icon={<Target size={14} />} label="Verify in" items={item.verify} />
+                  <EvidenceList icon={<Braces size={14} />} label="Code path" items={item.code} />
+                  <EvidenceList icon={<FileJson size={14} />} label="Evidence" items={item.artifacts} />
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <section className="methodology-review-panel" aria-label="Technical review prompts">
+            <div className="section-title">
+              <Radar size={16} />
+              <h3>Technical Review Prompts</h3>
+            </div>
+            <p>
+              These prompts are useful when reviewing a run, extending the model, or deciding whether an
+              analysis result is supported by the generated evidence.
+            </p>
+            <div className="methodology-prompt-list">
+              {REVIEW_PROMPTS.map((prompt) => (
+                <span key={prompt}>{prompt}</span>
+              ))}
+            </div>
+          </section>
+        </>
+      ) : (
+        <SystemFlowPanel />
+      )}
     </section>
   );
 }

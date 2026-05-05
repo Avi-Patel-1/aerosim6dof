@@ -30,7 +30,7 @@ AeroLab now provides the browser surface for the original 6DOF simulator plus th
 | Monte Carlo and trade-space studies | **Campaigns**, **Trade Space** | Run batches, dispersions, sweeps, reliability, UQ, sensitivity, Pareto ranking, surrogate, and optimization studies. |
 | Sensor-fusion and navigation review | **Estimation**, **Telemetry** | Compare truth, GNSS, barometer, pitot, radar altimeter, IMU, and fused estimates with residual reports. |
 | Report and artifact packaging | **Reports** | Collect HTML, SVG, CSV, JSON, mission packets, action outputs, and background job history. |
-| Engineering rationale | **Methodology** | Review architecture, model assumptions, evidence chains, validation strategy, code paths, and extension patterns. |
+| Engineering rationale | **Methodology** | Review architecture, system flow, model assumptions, evidence chains, validation strategy, code paths, and extension patterns. |
 
 See `docs/integration_map.md` for the full source-to-tab mapping.
 
@@ -68,7 +68,7 @@ See `docs/integration_map.md` for the full source-to-tab mapping.
 | **Models** | Inspects vehicle configs, compares vehicles, generates scenario templates, and creates aero, propulsion, and environment reports. |
 | **Editor** | Opens Scenario Builder v2: mission profile, vehicle, environment, initial state, GNC, sensors, faults, targets/interceptors, termination, outputs, and expert JSON in one guarded mission-design tool. |
 | **Reports** | Collects latest results, generated HTML reports, SVG plots, CSV/JSON artifacts, available capabilities, and background job status. |
-| **Methodology** | Explains how the simulator is structured, what assumptions are visible, how outputs support technical conclusions, and where to verify behavior in code and artifacts. |
+| **Methodology** | Explains simulator structure, system flow, assumptions, evidence, and code/artifact verification. |
 
 ### Practical Workflows
 
